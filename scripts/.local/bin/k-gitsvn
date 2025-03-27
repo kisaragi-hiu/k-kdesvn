@@ -1,0 +1,86 @@
+#!/usr/bin/env -S deno run -A
+// -*- mode: typescript; lsp-enabled-clients: (ts-ls); -*-
+/** Commands for managing a local svn repository checkout. */
+// vim: ft=typescript
+
+import { parseArgs } from "node:util";
+import { mkdirSync, writeFileSync } from "node:fs";
+// import { $ } from "npm:zx";
+import { $ } from "zx";
+import path from "node:path";
+
+function showHelp() {
+  console.log(`k-gitsvn [options]
+
+Commands for managing a local checkout of an svn repository with git.
+
+The Git repository is only here locally, and is used for local diff checking.
+
+Subcommands and options:
+  --setup: make sure .svn is ignored
+  --update: svn update; git add .; git commit
+  --msg: show latest Git commit message, perfect for piping to some copy command
+  --help, -h: Show help (this message)`);
+}
+
+/** Ensure the repository is as expected. */
+async function cmdSetup() {
+  const toplevel = (await $`git rev-parse --show-toplevel`.text()).trim();
+  const dotSvnNotExcluded = (
+    await $`cd ${toplevel}; git status -s`.text()
+  ).includes(".svn");
+  if (dotSvnNotExcluded) {
+    console.log(".svn doesn't seem excluded. Excluding locally.");
+    mkdirSync(path.join(toplevel, ".git", "info"), { recursive: true });
+    writeFileSync(path.join(toplevel, ".git", "info", "exclude"), `.svn/`);
+  }
+}
+
+/**
+ * Pull from svn and do a Git commit for the latest state.
+ * Assumes the repository is already set up, namely that .svn is already
+ * excluded by Git.
+ */
+async function cmdUpdate() {
+  await $({
+    verbose: true,
+    nothrow: true,
+  })`svn update; git add .; git commit -m before`;
+}
+
+/**
+ * Show message of the latest commit from Git.
+ * The plumbing from this to svn commit is not yet done. For now just, uh, pipe
+ * it there.
+ */
+async function cmdMsg() {
+  const message = (
+    await $`git show --format="%B" --no-patch HEAD`.text()
+  ).trim();
+  console.log(message);
+}
+
+async function main() {
+  const parsedArgs = parseArgs({
+    allowPositionals: true,
+    options: {
+      help: { type: "boolean", short: "h" },
+      update: { type: "boolean" },
+      setup: { type: "boolean" },
+      msg: { type: "boolean" },
+    },
+  });
+  if (parsedArgs.values.help) {
+    showHelp();
+    process.exit(0);
+  }
+  if (parsedArgs.values.update) {
+    await cmdUpdate();
+  } else if (parsedArgs.values.setup) {
+    await cmdSetup();
+  } else if (parsedArgs.values.msg) {
+    await cmdMsg();
+  }
+}
+
+main();
