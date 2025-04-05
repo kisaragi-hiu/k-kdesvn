@@ -6,7 +6,7 @@
 import { parseArgs } from "node:util";
 import { mkdirSync, writeFileSync } from "node:fs";
 // import { $ } from "npm:zx";
-import { $ } from "zx";
+import { $ } from "npm:zx";
 import path from "node:path";
 
 function showHelp() {
