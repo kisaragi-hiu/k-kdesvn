@@ -7,6 +7,7 @@ import { parseArgs } from "node:util";
 import { mkdirSync, writeFileSync } from "node:fs";
 // import { $ } from "npm:zx";
 import { $ } from "npm:zx";
+import clipboard from "npm:clipboardy"
 import path from "node:path";
 
 function showHelp() {
@@ -19,7 +20,7 @@ The Git repository is only here locally, and is used for local diff checking.
 Subcommands and options:
   --setup: make sure .svn is ignored
   --update: svn update; git add .; git commit
-  --msg: show latest Git commit message, perfect for piping to some copy command
+  --msg: copy latest Git commit message into the clipboard
   --help, -h: Show help (this message)`);
 }
 
@@ -49,15 +50,15 @@ async function cmdUpdate() {
 }
 
 /**
- * Show message of the latest commit from Git.
- * The plumbing from this to svn commit is not yet done. For now just, uh, pipe
- * it there.
+ * Show and copy message of the latest commit from Git.
+ * The plumbing from this to svn commit is not yet done. For now just, uh, run
+ * the command yourself and paste it in.
  */
 async function cmdMsg() {
   const message = (
     await $`git show --format="%B" --no-patch HEAD`.text()
   ).trim();
-  console.log(message);
+  await clipboard.write(message)
 }
 
 async function main() {
