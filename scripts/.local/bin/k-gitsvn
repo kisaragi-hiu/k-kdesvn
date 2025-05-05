@@ -58,7 +58,7 @@ async function cmdMsg() {
   const message = (
     await $`git show --format="%B" --no-patch HEAD`.text()
   ).trim();
-  console.log("Copying...");
+  console.log(message);
   // -l <n> specifies how many X requests before it exits. This is a quirk
   // with how the clipboard in X is by default a communication channel between
   // apps (copy source needs to be active to paste).
