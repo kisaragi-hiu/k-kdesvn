@@ -58,7 +58,16 @@ async function cmdMsg() {
   const message = (
     await $`git show --format="%B" --no-patch HEAD`.text()
   ).trim();
-  await $({ input: message })`xclip -selection clipboard`;
+  console.log("Copying...");
+  // -l <n> specifies how many X requests before it exits. This is a quirk
+  // with how the clipboard in X is by default a communication channel between
+  // apps (copy source needs to be active to paste).
+  // -l 1 should allow eg. the KDE clipboard to take ownership of it and then
+  // for xclip to exit, but that for some reason doesn't work. -l 2 works. :shrug:
+  // This is my own script, it doesn't have to be super reliable.
+  await $({
+    input: message + "\n",
+  })`xclip -silent -r -l 2 -selection clipboard`;
 }
 
 async function main() {
