@@ -18,6 +18,7 @@ The Git repository is only here locally, and is used for local diff checking.
 
 Subcommands and options:
   --setup: make sure .svn is ignored
+  --check: do an msgfmt check for all po files
   --update: svn update; git add .; git commit
   --msg: copy latest Git commit message into the clipboard.
     Assumes xclip is installed and working.
@@ -70,6 +71,10 @@ async function cmdMsg() {
   })`xclip -silent -r -l 2 -selection clipboard`;
 }
 
+async function cmdCheck() {
+  await $`fd '\.po$' -x msgfmt -o /dev/null --check-format`;
+}
+
 async function main() {
   const parsedArgs = parseArgs({
     allowPositionals: true,
@@ -77,6 +82,7 @@ async function main() {
       help: { type: "boolean", short: "h" },
       update: { type: "boolean" },
       setup: { type: "boolean" },
+      check: { type: "boolean" },
       msg: { type: "boolean" },
     },
   });
@@ -86,6 +92,8 @@ async function main() {
   }
   if (parsedArgs.values.update) {
     await cmdUpdate();
+  } else if (parsedArgs.values.check) {
+    await cmdCheck();
   } else if (parsedArgs.values.setup) {
     await cmdSetup();
   } else if (parsedArgs.values.msg) {
