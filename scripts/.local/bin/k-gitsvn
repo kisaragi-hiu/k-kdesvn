@@ -72,7 +72,10 @@ async function cmdMsg() {
 }
 
 async function cmdCheck() {
-  await $`fd '\.po$' -x msgfmt -o /dev/null --check-format`;
+  await $({
+    verbose: true,
+    nothrow: true,
+  })`fd '\.po$' -x msgfmt -o /dev/null --check-format`;
 }
 
 async function main() {
