@@ -8,6 +8,8 @@ import * as process from "node:process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+// Just for formatting timestamps in the current timezone offset, unfortunately
+import { formatISO } from "npm:date-fns";
 import { $ } from "npm:zx";
 import { XMLParser } from "npm:fast-xml-parser";
 import * as z from "npm:zod";
@@ -105,8 +107,17 @@ async function cmdLog() {
   const parser = new XMLParser({ ignoreAttributes: false });
   const raw = parser.parse(output);
   const logentries = SvnLogRaw.parse(raw).log.logentry;
-  console.log("Number of log entries that's not by scripty");
-  console.log(logentries.filter((entry) => entry.author !== "scripty").length);
+  const sep = "-".repeat(72);
+  for (const entry of logentries) {
+    if (entry.author === "scripty") continue;
+    const moment = Date.parse(entry.date);
+    console.log(sep);
+    console.log(
+      `r${entry["@_revision"]} | ${entry.author} | ${formatISO(moment)}`
+    );
+    console.log(entry.msg);
+  }
+  console.log(sep);
 }
 
 async function main() {
