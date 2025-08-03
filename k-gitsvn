@@ -107,6 +107,7 @@ async function cmdLog(limit: string) {
       ),
     }),
   });
+  console.error("Fetching log messages from remote...");
   const output = await $`svn log --xml --limit ${limit}`.text();
   const parser = new XMLParser({ ignoreAttributes: false });
   const raw = parser.parse(output);
