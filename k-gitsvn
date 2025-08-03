@@ -27,8 +27,8 @@ Subcommands and options:
   --update: svn update; git add .; git commit
   --msg: copy latest Git commit message into the clipboard.
     Assumes xclip is installed and working.
-  --log <arg>: show recent revision messages, excluding ones from scripty
-    <arg> is passed to svn log as the --limit argument.
+  --log <limit>: Like \`svn log\` but exclude revisions from scripty.
+    <limit> is passed to svn log as the --limit argument.
     Example:
     Fetch the last 100 revisions then exclude scripty changes:
       k-gitsvn --log 100
