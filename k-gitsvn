@@ -4,10 +4,13 @@
 // vim: ft=typescript
 
 import { parseArgs } from "node:util";
+import * as process from "node:process";
 import { mkdirSync, writeFileSync } from "node:fs";
-// import { $ } from "npm:zx";
-import { $ } from "npm:zx";
 import path from "node:path";
+
+import { $ } from "npm:zx";
+import { XMLParser } from "npm:fast-xml-parser";
+import * as z from "npm:zod";
 
 function showHelp() {
   console.log(`k-gitsvn [options]
@@ -22,6 +25,7 @@ Subcommands and options:
   --update: svn update; git add .; git commit
   --msg: copy latest Git commit message into the clipboard.
     Assumes xclip is installed and working.
+  --log: show recent revision messages, excluding ones from scripty
   --help, -h: Show help (this message)`);
 }
 
@@ -78,6 +82,33 @@ async function cmdCheck() {
   })`fd '\.po$' -x msgfmt -o /dev/null --check-format`;
 }
 
+async function cmdLog() {
+  function ensureArray<T>(val: T) {
+    return Array.isArray(val) ? val : [val];
+  }
+  const SvnLogRaw = z.object({
+    log: z.object({
+      logentry: z.preprocess(
+        ensureArray,
+        z.array(
+          z.object({
+            ["@_revision"]: z.string(),
+            author: z.string(),
+            date: z.string(),
+            msg: z.string(),
+          })
+        )
+      ),
+    }),
+  });
+  const output = await $`svn log --xml --limit 100`.text();
+  const parser = new XMLParser({ ignoreAttributes: false });
+  const raw = parser.parse(output);
+  const logentries = SvnLogRaw.parse(raw).log.logentry;
+  console.log("Number of log entries that's not by scripty");
+  console.log(logentries.filter((entry) => entry.author !== "scripty").length);
+}
+
 async function main() {
   const parsedArgs = parseArgs({
     allowPositionals: true,
@@ -87,6 +118,7 @@ async function main() {
       setup: { type: "boolean" },
       check: { type: "boolean" },
       msg: { type: "boolean" },
+      log: { type: "boolean" },
     },
   });
   if (parsedArgs.values.help) {
@@ -101,6 +133,8 @@ async function main() {
     await cmdSetup();
   } else if (parsedArgs.values.msg) {
     await cmdMsg();
+  } else if (parsedArgs.values.log) {
+    await cmdLog();
   }
 }
 
