@@ -27,7 +27,11 @@ Subcommands and options:
   --update: svn update; git add .; git commit
   --msg: copy latest Git commit message into the clipboard.
     Assumes xclip is installed and working.
-  --log: show recent revision messages, excluding ones from scripty
+  --log <arg>: show recent revision messages, excluding ones from scripty
+    <arg> is passed to svn log as the --limit argument.
+    Example:
+    Fetch the last 100 revisions then exclude scripty changes:
+      k-gitsvn --log 100
   --help, -h: Show help (this message)`);
 }
 
@@ -84,7 +88,7 @@ async function cmdCheck() {
   })`fd '\.po$' -x msgfmt -o /dev/null --check-format`;
 }
 
-async function cmdLog() {
+async function cmdLog(limit: string) {
   function ensureArray<T>(val: T) {
     return Array.isArray(val) ? val : [val];
   }
@@ -103,7 +107,7 @@ async function cmdLog() {
       ),
     }),
   });
-  const output = await $`svn log --xml --limit 100`.text();
+  const output = await $`svn log --xml --limit ${limit}`.text();
   const parser = new XMLParser({ ignoreAttributes: false });
   const raw = parser.parse(output);
   const logentries = SvnLogRaw.parse(raw).log.logentry;
@@ -129,7 +133,7 @@ async function main() {
       setup: { type: "boolean" },
       check: { type: "boolean" },
       msg: { type: "boolean" },
-      log: { type: "boolean" },
+      log: { type: "string" },
     },
   });
   if (parsedArgs.values.help) {
@@ -145,7 +149,7 @@ async function main() {
   } else if (parsedArgs.values.msg) {
     await cmdMsg();
   } else if (parsedArgs.values.log) {
-    await cmdLog();
+    await cmdLog(parsedArgs.values.log);
   }
 }
 
