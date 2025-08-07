@@ -16,6 +16,8 @@ export const SvnLogRaw = z.object({
     logentry: z.preprocess(ensureArray, z.array(SvnLogEntry)),
   }),
 });
+export const ArgLogMsgFormat = z.enum(["full", "one-line", "none"]);
+export type ArgLogMsgFormat = z.infer<typeof ArgLogMsgFormat>;
 
 export async function fetchLogEntries(opts?: {
   limit?: string;

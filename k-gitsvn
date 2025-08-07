@@ -12,7 +12,7 @@ import path from "node:path";
 import { formatISO } from "npm:date-fns";
 import { $ } from "npm:zx";
 
-import { fetchLogEntries } from "./utils.ts";
+import { fetchLogEntries, ArgLogMsgFormat } from "./utils.ts";
 
 function showHelp() {
   console.log(`k-gitsvn [options]
@@ -32,6 +32,7 @@ Subcommands and options:
     --limit, -l <n>: the --limit argument of svn log.
     --from <date>: Provide log from <date> to HEAD.
     --exclude <comma separated names>: Exclude a different set of authors
+    --msgFormat none|full|one-line: how to show messages. Defaults to full messages.
     Example:
       Fetch the last 100 revisions then exclude scripty changes:
         k-gitsvn --log -l 100
@@ -101,6 +102,7 @@ async function cmdLog(opts?: {
   from?: string;
   /** Exclude these authors. Comma-separated. Defaults to "scripty". */
   exclude?: string;
+  msgFormat?: ArgLogMsgFormat;
 }) {
   console.error("Fetching log messages from remote...");
   const logentries = await fetchLogEntries({
@@ -122,7 +124,17 @@ async function cmdLog(opts?: {
     console.log(
       `r${entry["@_revision"]} | ${entry.author} | ${formatISO(moment)}`
     );
-    console.log(entry.msg);
+    if (opts?.msgFormat === "full" || opts?.msgFormat === undefined) {
+      // Default case
+      console.log(entry.msg);
+    } else if (opts?.msgFormat === "one-line") {
+      const newlinePos = entry.msg.indexOf("\n");
+      if (newlinePos === -1) {
+        console.log(entry.msg);
+      } else {
+        console.log(entry.msg.substring(0, newlinePos));
+      }
+    }
   }
   console.log(sep);
 }
@@ -141,6 +153,7 @@ async function main() {
       limit: { type: "string", short: "l" },
       from: { type: "string" },
       exclude: { type: "string" },
+      msgFormat: { type: "string" },
     },
   });
   if (parsedArgs.values.help) {
@@ -160,10 +173,15 @@ async function main() {
       console.log("--limit or --from must be provided with --log");
       process.exit(1);
     }
+    const msgFormat =
+      parsedArgs.values.msgFormat === undefined
+        ? undefined
+        : ArgLogMsgFormat.parse(parsedArgs.values.msgFormat);
     await cmdLog({
       limit: parsedArgs.values.limit,
       from: parsedArgs.values.from,
       exclude: parsedArgs.values.exclude,
+      msgFormat: msgFormat,
     });
   }
 }
