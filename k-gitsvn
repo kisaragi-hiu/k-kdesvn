@@ -1,5 +1,5 @@
 #!/usr/bin/env -S deno run -A
-// -*- mode: typescript; lsp-enabled-clients: (deno-ls); -*-
+// -*- mode: typescript; -*-
 /** Commands for managing a local svn repository checkout. */
 // vim: ft=typescript
 
@@ -11,8 +11,8 @@ import path from "node:path";
 // Just for formatting timestamps in the current timezone offset, unfortunately
 import { formatISO } from "npm:date-fns";
 import { $ } from "npm:zx";
-import { XMLParser } from "npm:fast-xml-parser";
-import * as z from "npm:zod";
+
+import { fetchLogEntries } from "./utils.ts";
 
 function showHelp() {
   console.log(`k-gitsvn [options]
