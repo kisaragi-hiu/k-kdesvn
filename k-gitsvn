@@ -11,6 +11,7 @@ import path from "node:path";
 // Just for formatting timestamps in the current timezone offset, unfortunately
 import { formatISO } from "npm:date-fns";
 import { $ } from "npm:zx";
+import link from "npm:terminal-link";
 
 import { fetchLogEntries, ArgLogMsgFormat } from "./utils.ts";
 
@@ -121,8 +122,12 @@ async function cmdLog(opts?: {
     if (excludeSet.has(entry.author)) continue;
     const moment = Date.parse(entry.date);
     console.log(sep);
+    const revision = entry["@_revision"];
     console.log(
-      `r${entry["@_revision"]} | ${entry.author} | ${formatISO(moment)}`
+      `r${link(
+        revision,
+        `https://websvn.kde.org/?view=revision&revision=${revision}`
+      )} | ${entry.author} | ${formatISO(moment)}`
     );
     if (opts?.msgFormat === "full" || opts?.msgFormat === undefined) {
       // Default case
