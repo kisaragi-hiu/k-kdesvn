@@ -4,8 +4,8 @@
     "npm:date-fns@*": "4.1.0",
     "npm:fast-xml-parser@*": "5.2.5",
     "npm:terminal-link@*": "4.0.0",
-    "npm:zod@*": "3.24.2",
-    "npm:zx@*": "8.4.1"
+    "npm:zod@*": "4.0.15",
+    "npm:zx@*": "8.8.0"
   },
   "npm": {
     "ansi-escapes@7.0.0": {
@@ -52,11 +52,11 @@
         "supports-hyperlinks"
       ]
     },
-    "zod@3.24.2": {
-      "integrity": "sha512-lY7CDW43ECgW9u1TcT3IoXHflywfVqDYze4waEz812jR/bZ8FHDsl7pFQoSZTz5N+2NqRXs8GBwnAwo3ZNxqhQ=="
+    "zod@4.0.15": {
+      "integrity": "sha512-2IVHb9h4Mt6+UXkyMs0XbfICUh1eUrlJJAOupBHUhLRnKkruawyDddYRCs0Eizt900ntIMk9/4RksYl+FgSpcQ=="
     },
-    "zx@8.4.1": {
-      "integrity": "sha512-1Cb+Tfwt/daKV6wckBeDbB6h3IMauqj9KWp+EcbYzi9doeJeIHCktxp/yWspXOXRdoUzBCQSKoUgm3g8r9fz5A=="
+    "zx@8.8.0": {
+      "integrity": "sha512-v0VZXgSHusDvTtZROno3Ws8xkE1uNSSwH/yF8Fm+ZwBrYhr+bRNNpsnTJ32eR/t6umc7lAz5WqdP800ugW9zFA=="
     }
   }
 }
