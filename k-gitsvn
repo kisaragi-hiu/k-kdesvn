@@ -121,6 +121,12 @@ async function cmdLog(opts?: {
     opts?.exclude === undefined ? ["scripty"] : opts?.exclude.split(",")
   );
   const authors = new Map<string, number>();
+
+  console.log(`--limit: ${limit ?? "unspecified"}
+--revision: ${revision ?? "unspecified"}
+Excluded authors: ${[...excludeSet].join(", ")}
+`);
+
   for (const entry of logentries) {
     authors.set(entry.author, (authors.get(entry.author) || 0) + 1);
     if (excludeSet.has(entry.author)) continue;
@@ -146,12 +152,7 @@ async function cmdLog(opts?: {
     }
   }
   console.log(sep);
-
   console.log(`
---limit: ${limit ?? "unspecified"}
---revision: ${revision ?? "unspecified"}
-Excluded authors: ${[...excludeSet].join(", ")}
-
 Stats:`);
   console.log(
     Object.fromEntries([...authors].sort((a, b) => (a[1] < b[1] ? 1 : -1)))
