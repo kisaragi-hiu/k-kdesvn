@@ -12,7 +12,6 @@ import path from "node:path";
 import { formatISO } from "npm:date-fns";
 import { $ } from "npm:zx";
 import { link } from "npm:ansi-escapes";
-import { markdownTable } from "npm:markdown-table";
 
 import { fetchLogEntries, ArgLogMsgFormat } from "./utils.ts";
 
