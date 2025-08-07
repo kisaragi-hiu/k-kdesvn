@@ -27,11 +27,18 @@ Subcommands and options:
   --update: svn update; git add .; git commit
   --msg: copy latest Git commit message into the clipboard.
     Assumes xclip is installed and working.
-  --log <limit>: Like \`svn log\` but exclude revisions from scripty.
-    <limit> is passed to svn log as the --limit argument.
+  --log: Like \`svn log\` but exclude revisions from scripty.
+    This subcommand has its own options:
+    --limit, -l <n>: the --limit argument of svn log.
+    --from <date>: Provide log from <date> to HEAD.
+    --exclude <comma separated names>: Exclude a different set of authors
     Example:
-    Fetch the last 100 revisions then exclude scripty changes:
-      k-gitsvn --log 100
+      Fetch the last 100 revisions then exclude scripty changes:
+        k-gitsvn --log -l 100
+      Fetch revisions since 2025-01-01 then exclude scripty changes:
+        k-gitsvn --log --from "2025-01-01"
+      Fetch the last 100 revisions excluding authors "a" and "b":
+        k-gitsvn --log --exclude "a,b" # scripty is included in this case
   --help, -h: Show help (this message)`);
 }
 
@@ -88,33 +95,24 @@ async function cmdCheck() {
   })`fd '\.po$' -x msgfmt -o /dev/null --check-format`;
 }
 
-async function cmdLog(limit: string) {
-  function ensureArray<T>(val: T) {
-    return Array.isArray(val) ? val : [val];
-  }
-  const SvnLogRaw = z.object({
-    log: z.object({
-      logentry: z.preprocess(
-        ensureArray,
-        z.array(
-          z.object({
-            ["@_revision"]: z.string(),
-            author: z.string(),
-            date: z.string(),
-            msg: z.string(),
-          })
-        )
-      ),
-    }),
-  });
+async function cmdLog(opts?: {
+  limit?: string;
+  /** List changes from this date to HEAD. */
+  from?: string;
+  /** Exclude these authors. Comma-separated. Defaults to "scripty". */
+  exclude?: string;
+}) {
   console.error("Fetching log messages from remote...");
-  const output = await $`svn log --xml --limit ${limit}`.text();
-  const parser = new XMLParser({ ignoreAttributes: false });
-  const raw = parser.parse(output);
-  const logentries = SvnLogRaw.parse(raw).log.logentry;
+  const logentries = await fetchLogEntries({
+    limit: opts?.limit,
+    revision: opts?.from && `{${opts.from}}:HEAD`,
+  });
   const sep = "-".repeat(72);
+  const excludeSet = new Set(
+    opts?.exclude ? opts?.exclude.split(",") : ["scripty"]
+  );
   for (const entry of logentries) {
-    if (entry.author === "scripty") continue;
+    if (excludeSet.has(entry.author)) continue;
     const moment = Date.parse(entry.date);
     console.log(sep);
     console.log(
@@ -134,7 +132,11 @@ async function main() {
       setup: { type: "boolean" },
       check: { type: "boolean" },
       msg: { type: "boolean" },
-      log: { type: "string" },
+
+      log: { type: "boolean" },
+      limit: { type: "string", short: "l" },
+      from: { type: "string" },
+      exclude: { type: "string" },
     },
   });
   if (parsedArgs.values.help) {
@@ -150,7 +152,15 @@ async function main() {
   } else if (parsedArgs.values.msg) {
     await cmdMsg();
   } else if (parsedArgs.values.log) {
-    await cmdLog(parsedArgs.values.log);
+    if (!parsedArgs.values.limit && !parsedArgs.values.from) {
+      console.log("--limit or --from must be provided with --log");
+      process.exit(1);
+    }
+    await cmdLog({
+      limit: parsedArgs.values.limit,
+      from: parsedArgs.values.from,
+      exclude: parsedArgs.values.exclude,
+    });
   }
 }
 
