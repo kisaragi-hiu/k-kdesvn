@@ -10,7 +10,13 @@ import path from "node:path";
 
 // Just for formatting timestamps in the current timezone offset, unfortunately
 import { formatISO } from "npm:date-fns";
-import { $ } from "npm:zx";
+import { $, chalk } from "npm:zx";
+
+// Force colors on even if we're piping to another program
+// The main program we're piping to is `less -R`. We just want paging for the
+// same output we'd get in the terminal normally.
+chalk.level = 3;
+
 import { link } from "npm:ansi-escapes";
 
 import { fetchLogEntries, ArgLogMsgFormat } from "./utils.ts";
@@ -33,6 +39,7 @@ Subcommands and options:
     --limit, -l <n>: the --limit argument of svn log.
     --since <date>: Provide log from <date> to HEAD.
     --exclude <comma separated names>: Exclude a different set of authors
+    --unhighlighted <comma separated names>: Highlight everyone except these
     --msgFormat none|full|one-line: how to show messages. Defaults to full messages.
     Example:
       Fetch the last 100 revisions then exclude scripty changes:
@@ -103,6 +110,8 @@ async function cmdLog(opts?: {
   since?: string;
   /** Exclude these authors. Comma-separated. Defaults to "scripty". */
   exclude?: string;
+  /** Highlight all authors except these. Comma-separated. Defaults to "moonlight". */
+  unhighlighted?: string;
   msgFormat?: ArgLogMsgFormat;
 }) {
   console.error("Fetching log messages from remote...");
@@ -120,11 +129,17 @@ async function cmdLog(opts?: {
     // excludes list instead of using the fallback.
     opts?.exclude === undefined ? ["scripty"] : opts?.exclude.split(",")
   );
+  const unhighlightedSet = new Set(
+    opts?.unhighlighted === undefined
+      ? ["moonlight"]
+      : opts?.unhighlighted.split(",")
+  );
   const authors = new Map<string, number>();
 
   console.log(`--limit: ${limit ?? "unspecified"}
 --revision: ${revision ?? "unspecified"}
 Excluded authors: ${[...excludeSet].join(", ")}
+Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
 `);
 
   for (const entry of logentries) {
@@ -137,7 +152,11 @@ Excluded authors: ${[...excludeSet].join(", ")}
       `r${link(
         revision,
         `https://websvn.kde.org/?view=revision&revision=${revision}`
-      )} | ${entry.author} | ${formatISO(moment)}`
+      )} | ${
+        unhighlightedSet.has(entry.author)
+          ? entry.author
+          : chalk.yellow(entry.author)
+      } | ${formatISO(moment)}`
     );
     if (opts?.msgFormat === "full" || opts?.msgFormat === undefined) {
       // Default case
@@ -173,6 +192,7 @@ async function main() {
       limit: { type: "string", short: "l" },
       since: { type: "string" },
       exclude: { type: "string" },
+      unhighlighted: { type: "string" },
       msgFormat: { type: "string" },
     },
   });
@@ -201,6 +221,7 @@ async function main() {
       limit: parsedArgs.values.limit,
       since: parsedArgs.values.since,
       exclude: parsedArgs.values.exclude,
+      unhighlighted: parsedArgs.values.unhighlighted,
       msgFormat: msgFormat,
     });
   }
