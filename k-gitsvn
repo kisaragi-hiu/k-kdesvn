@@ -109,7 +109,11 @@ async function cmdLog(opts?: {
   });
   const sep = "-".repeat(72);
   const excludeSet = new Set(
-    opts?.exclude ? opts?.exclude.split(",") : ["scripty"]
+    // We have to use an explicit check against undefined, because the
+    // empty string is falsy.
+    // We want an empty string to take the latter case and result in an empty
+    // excludes list instead of using the fallback.
+    opts?.exclude === undefined ? ["scripty"] : opts?.exclude.split(",")
   );
   for (const entry of logentries) {
     if (excludeSet.has(entry.author)) continue;
