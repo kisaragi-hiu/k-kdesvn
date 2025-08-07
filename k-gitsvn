@@ -11,7 +11,7 @@ import path from "node:path";
 // Just for formatting timestamps in the current timezone offset, unfortunately
 import { formatISO } from "npm:date-fns";
 import { $ } from "npm:zx";
-import link from "npm:terminal-link";
+import { link } from "npm:ansi-escapes";
 
 import { fetchLogEntries, ArgLogMsgFormat } from "./utils.ts";
 
