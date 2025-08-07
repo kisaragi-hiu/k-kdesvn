@@ -186,4 +186,9 @@ async function main() {
   }
 }
 
-main();
+// Ignore top level errors
+// If we pipe output to less then quit it without viewing the whole
+// thing, the pager doesn't consume the entire pipe, which leads to a
+// BrokenPipe error.
+// This is the overkill but fast way to get rid of it.
+main().catch(() => {});
