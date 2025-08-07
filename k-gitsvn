@@ -30,14 +30,14 @@ Subcommands and options:
   --log: Like \`svn log\` but exclude revisions from scripty.
     This subcommand has its own options:
     --limit, -l <n>: the --limit argument of svn log.
-    --from <date>: Provide log from <date> to HEAD.
+    --since <date>: Provide log from <date> to HEAD.
     --exclude <comma separated names>: Exclude a different set of authors
     --msgFormat none|full|one-line: how to show messages. Defaults to full messages.
     Example:
       Fetch the last 100 revisions then exclude scripty changes:
         k-gitsvn --log -l 100
       Fetch revisions since 2025-01-01 then exclude scripty changes:
-        k-gitsvn --log --from "2025-01-01"
+        k-gitsvn --log --since "2025-01-01"
       Fetch the last 100 revisions excluding authors "a" and "b":
         k-gitsvn --log --exclude "a,b" # scripty is included in this case
   --help, -h: Show help (this message)`);
@@ -99,7 +99,7 @@ async function cmdCheck() {
 async function cmdLog(opts?: {
   limit?: string;
   /** List changes from this date to HEAD. */
-  from?: string;
+  since?: string;
   /** Exclude these authors. Comma-separated. Defaults to "scripty". */
   exclude?: string;
   msgFormat?: ArgLogMsgFormat;
@@ -107,7 +107,7 @@ async function cmdLog(opts?: {
   console.error("Fetching log messages from remote...");
   const logentries = await fetchLogEntries({
     limit: opts?.limit,
-    revision: opts?.from && `{${opts.from}}:HEAD`,
+    revision: opts?.since && `{${opts.since}}:HEAD`,
   });
   const sep = "-".repeat(72);
   const excludeSet = new Set(
@@ -151,7 +151,7 @@ async function main() {
 
       log: { type: "boolean" },
       limit: { type: "string", short: "l" },
-      from: { type: "string" },
+      since: { type: "string" },
       exclude: { type: "string" },
       msgFormat: { type: "string" },
     },
@@ -169,8 +169,8 @@ async function main() {
   } else if (parsedArgs.values.msg) {
     await cmdMsg();
   } else if (parsedArgs.values.log) {
-    if (!parsedArgs.values.limit && !parsedArgs.values.from) {
-      console.log("--limit or --from must be provided with --log");
+    if (!parsedArgs.values.limit && !parsedArgs.values.since) {
+      console.log("--limit or --since must be provided with --log");
       process.exit(1);
     }
     const msgFormat =
@@ -179,7 +179,7 @@ async function main() {
         : ArgLogMsgFormat.parse(parsedArgs.values.msgFormat);
     await cmdLog({
       limit: parsedArgs.values.limit,
-      from: parsedArgs.values.from,
+      since: parsedArgs.values.since,
       exclude: parsedArgs.values.exclude,
       msgFormat: msgFormat,
     });
