@@ -171,7 +171,9 @@ async function cmdLog(opts?: {
   // Also, console.log accepts all kinds of objects, which is convenient.
   // TODO: we can make a library out of this
   // (that's a stupid reference)
-  const consol = process.stdout.isTTY ? new Console(subprocess.stdin) : console;
+  const consol = process.stdout.isTTY
+    ? new Console({ stdout: subprocess.stdin, colorMode: true })
+    : console;
   const revision = opts?.since && `{${opts.since}}:HEAD`;
   // When --since is provided, --limit should act like no limit by default
   // but when --since is not provided, --limit should have a default of 100
