@@ -4,7 +4,10 @@
 // vim: ft=typescript
 
 import { mkdirSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import * as process from "node:process";
 import path from "node:path";
+import { Console } from "node:console";
 
 // Just for formatting timestamps in the current timezone offset, unfortunately
 import { formatISO } from "npm:date-fns";
@@ -159,6 +162,16 @@ async function cmdLog(opts?: {
   /** How to show commit messages. */
   msgFormat?: string;
 }) {
+  const subprocess = spawn("/usr/bin/less", ["-R"], {
+    stdio: ["pipe", "inherit", "inherit"],
+  });
+  // I would use
+  //   const stream = process.stdout.isTTY ? subprocess.stdin : process.stdout;
+  // but Deno reports stream.write() as an error in that case for some reason.
+  // Also, console.log accepts all kinds of objects, which is convenient.
+  // TODO: we can make a library out of this
+  // (that's a stupid reference)
+  const consol = process.stdout.isTTY ? new Console(subprocess.stdin) : console;
   const revision = opts?.since && `{${opts.since}}:HEAD`;
   // When --since is provided, --limit should act like no limit by default
   // but when --since is not provided, --limit should have a default of 100
@@ -181,14 +194,14 @@ async function cmdLog(opts?: {
   );
   const authors = new Map<string, number>();
 
-  console.log(`--limit: ${limit ?? "unspecified"}
+  consol.log(`--limit: ${limit ?? "unspecified"}
 --revision: ${revision ?? "unspecified"}
 Sort: ${sort ?? "unspecified"}
 Excluded authors: ${[...excludeSet].join(", ")}
 Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
 `);
 
-  console.error("Fetching log messages from remote...");
+  consol.error("Fetching log messages from remote...");
   const logentries = await fetchLogEntries({
     limit,
     revision,
@@ -199,9 +212,9 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
     authors.set(entry.author, (authors.get(entry.author) || 0) + 1);
     if (excludeSet.has(entry.author)) continue;
     const moment = entry.date;
-    console.log(sep);
+    consol.log(sep);
     const revision = entry["@_revision"];
-    console.log(
+    consol.log(
       `r${link(
         revision,
         `https://websvn.kde.org/?view=revision&revision=${revision}`
@@ -212,22 +225,23 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
       } | ${formatISO(moment)}`
     );
     if (msgFormat === "full") {
-      console.log(entry.msg);
+      consol.log(entry.msg);
     } else if (msgFormat === "one-line") {
       const newlinePos = entry.msg.indexOf("\n");
       if (newlinePos === -1) {
-        console.log(entry.msg);
+        consol.log(entry.msg);
       } else {
-        console.log(entry.msg.substring(0, newlinePos));
+        consol.log(entry.msg.substring(0, newlinePos));
       }
     }
   }
-  console.log(sep);
-  console.log(`
+  consol.log(sep);
+  consol.log(`
 Stats:`);
-  console.log(
+  consol.log(
     Object.fromEntries([...authors].sort((a, b) => (a[1] < b[1] ? 1 : -1)))
   );
+  subprocess.stdin.end();
 }
 
 // Ignore top level errors
