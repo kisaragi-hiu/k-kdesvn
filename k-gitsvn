@@ -120,7 +120,6 @@ async function cmdLog(opts?: {
   /** How to show commit messages. */
   msgFormat?: string;
 }) {
-  console.error("Fetching log messages from remote...");
   const revision = opts?.since && `{${opts.since}}:HEAD`;
   // When --since is provided, --limit should act like no limit by default
   // but when --since is not provided, --limit should have a default of 100
@@ -128,11 +127,6 @@ async function cmdLog(opts?: {
   // Specify defaults in one place.
   const sort = ArgLogSort.parse(opts?.sort ?? "new-first");
   const msgFormat = ArgLogMsgFormat.parse(opts?.msgFormat ?? "full");
-  const logentries = await fetchLogEntries({
-    limit,
-    revision,
-    sort,
-  });
   const sep = "-".repeat(72);
   const excludeSet = new Set(
     // We have to use an explicit check against undefined, because the
@@ -154,6 +148,13 @@ Sort: ${sort ?? "unspecified"}
 Excluded authors: ${[...excludeSet].join(", ")}
 Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
 `);
+
+  console.error("Fetching log messages from remote...");
+  const logentries = await fetchLogEntries({
+    limit,
+    revision,
+    sort,
+  });
 
   for (const entry of logentries) {
     authors.set(entry.author, (authors.get(entry.author) || 0) + 1);
