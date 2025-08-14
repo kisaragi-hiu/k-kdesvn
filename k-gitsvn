@@ -106,6 +106,8 @@ async function cmdCheck() {
 }
 
 async function cmdLog(opts?: {
+  /** --limit as passed to svn log. Defaults to 100 if --since is not
+   * provided, undefined if it is. */
   limit?: string;
   /** List changes from this date to HEAD. */
   since?: string;
@@ -114,13 +116,18 @@ async function cmdLog(opts?: {
   /** Highlight all authors except these. Comma-separated. Defaults to "moonlight". */
   unhighlighted?: string;
   /** How to sort log entries. Undefined means return whatever svn log returns. */
-  sort?: ArgLogSort;
-  msgFormat?: ArgLogMsgFormat;
+  sort?: string;
+  /** How to show commit messages. */
+  msgFormat?: string;
 }) {
   console.error("Fetching log messages from remote...");
-  const limit = opts?.limit;
-  const sort = opts?.sort;
   const revision = opts?.since && `{${opts.since}}:HEAD`;
+  // When --since is provided, --limit should act like no limit by default
+  // but when --since is not provided, --limit should have a default of 100
+  const limit = opts?.limit ?? (revision ? undefined : "100");
+  // Specify defaults in one place.
+  const sort = ArgLogSort.parse(opts?.sort ?? "new-first");
+  const msgFormat = ArgLogMsgFormat.parse(opts?.msgFormat ?? "full");
   const logentries = await fetchLogEntries({
     limit,
     revision,
@@ -143,6 +150,7 @@ async function cmdLog(opts?: {
 
   console.log(`--limit: ${limit ?? "unspecified"}
 --revision: ${revision ?? "unspecified"}
+Sort: ${sort ?? "unspecified"}
 Excluded authors: ${[...excludeSet].join(", ")}
 Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
 `);
@@ -163,10 +171,9 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
           : chalk.yellow(entry.author)
       } | ${formatISO(moment)}`
     );
-    if (opts?.msgFormat === "full" || opts?.msgFormat === undefined) {
-      // Default case
+    if (msgFormat === "full") {
       console.log(entry.msg);
-    } else if (opts?.msgFormat === "one-line") {
+    } else if (msgFormat === "one-line") {
       const newlinePos = entry.msg.indexOf("\n");
       if (newlinePos === -1) {
         console.log(entry.msg);
@@ -215,25 +222,13 @@ async function main() {
   } else if (parsedArgs.values.msg) {
     await cmdMsg();
   } else if (parsedArgs.values.log) {
-    if (!parsedArgs.values.limit && !parsedArgs.values.since) {
-      console.log("--limit or --since must be provided with --log");
-      process.exit(1);
-    }
-    const msgFormat =
-      parsedArgs.values.msgFormat === undefined
-        ? undefined
-        : ArgLogMsgFormat.parse(parsedArgs.values.msgFormat);
-    const sort =
-      parsedArgs.values.sort === undefined
-        ? undefined
-        : ArgLogSort.parse(parsedArgs.values.sort);
     await cmdLog({
       limit: parsedArgs.values.limit,
       since: parsedArgs.values.since,
-      sort: sort,
+      sort: parsedArgs.values.sort,
       exclude: parsedArgs.values.exclude,
       unhighlighted: parsedArgs.values.unhighlighted,
-      msgFormat: msgFormat,
+      msgFormat: parsedArgs.values.msgFormat,
     });
   }
 }

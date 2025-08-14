@@ -30,7 +30,7 @@ export type ArgLogSort = z.infer<typeof ArgLogSort>;
 export async function fetchLogEntries(opts?: {
   limit?: string;
   revision?: string;
-  sort?: ArgLogSort;
+  sort: ArgLogSort;
 }) {
   // We want it to persist.
   const cacheFile = path.join(
@@ -52,7 +52,7 @@ export async function fetchLogEntries(opts?: {
   const parser = new XMLParser({ ignoreAttributes: false });
   const raw = parser.parse(output);
   const entries = SvnLogRaw.parse(raw).log.logentry;
-  if (opts?.sort === "new-first" || opts?.sort === undefined) {
+  if (opts?.sort === "new-first") {
     entries.sort(({ date: dateA }, { date: dateB }) => {
       return dateB - dateA;
     });
