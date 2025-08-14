@@ -3,8 +3,6 @@
 /** Commands for managing a local svn repository checkout. */
 // vim: ft=typescript
 
-import { parseArgs } from "node:util";
-import * as process from "node:process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -77,50 +75,21 @@ Example:
   )
   .addOption(
     new Option(
-      "--msg-format <none|full|one-line>",
+      `--msg-format <${ArgLogMsgFormat.options.join("|")}>`,
       "How to show messages. Defaults to full messages."
-    ).choices(["none", "full", "one-line"])
+    )
+      .choices(ArgLogMsgFormat.options)
+      .default("full")
   )
   .addOption(
     new Option(
-      "--sort <none|new-first|old-first>",
+      `--sort <${ArgLogSort.options}>`,
       "How to sort messages. Defaults to new to old."
-    ).choices(["none", "new-first", "old-first"])
+    )
+      .default("new-first")
+      .choices(ArgLogSort.options)
   )
-  .action((opts) => {
-    console.log(opts);
-  });
-
-function showHelp() {
-  console.log(`k-gitsvn [options]
-
-Commands for managing a local checkout of an svn repository with git.
-
-The Git repository is only here locally, and is used for local diff checking.
-
-Subcommands and options:
-  --setup: make sure .svn is ignored
-  --check: do an msgfmt check for all po files
-  --update: svn update; git add .; git commit
-  --msg: copy latest Git commit message into the clipboard.
-    Assumes xclip is installed and working.
-  --log: Like \`svn log\` but exclude revisions from scripty.
-    This subcommand has its own options:
-    --limit, -l <n>: the --limit argument of svn log.
-    --since <date>: Provide log from <date> to HEAD.
-    --exclude <comma separated names>: Exclude a different set of authors
-    --unhighlighted <comma separated names>: Highlight everyone except these
-    --msgFormat none|full|one-line: how to show messages. Defaults to full messages.
-    --sort none|new-first|old-first: how to sort messages. Defaults to new to old.
-    Example:
-      Fetch the last 100 revisions then exclude scripty changes:
-        k-gitsvn --log -l 100
-      Fetch revisions since 2025-01-01 then exclude scripty changes:
-        k-gitsvn --log --since "2025-01-01"
-      Fetch the last 100 revisions excluding authors "a" and "b":
-        k-gitsvn --log --exclude "a,b" # scripty is included in this case
-  --help, -h: Show help (this message)`);
-}
+  .action(cmdLog);
 
 /** Ensure the repository is as expected. */
 async function cmdSetup() {
@@ -259,49 +228,6 @@ Stats:`);
   console.log(
     Object.fromEntries([...authors].sort((a, b) => (a[1] < b[1] ? 1 : -1)))
   );
-}
-
-async function main() {
-  const parsedArgs = parseArgs({
-    allowPositionals: true,
-    options: {
-      help: { type: "boolean", short: "h" },
-      update: { type: "boolean" },
-      setup: { type: "boolean" },
-      check: { type: "boolean" },
-      msg: { type: "boolean" },
-
-      log: { type: "boolean" },
-      limit: { type: "string", short: "l" },
-      since: { type: "string" },
-      sort: { type: "string" },
-      exclude: { type: "string" },
-      unhighlighted: { type: "string" },
-      msgFormat: { type: "string" },
-    },
-  });
-  if (parsedArgs.values.help) {
-    showHelp();
-    process.exit(0);
-  }
-  if (parsedArgs.values.update) {
-    await cmdUpdate();
-  } else if (parsedArgs.values.check) {
-    await cmdCheck();
-  } else if (parsedArgs.values.setup) {
-    await cmdSetup();
-  } else if (parsedArgs.values.msg) {
-    await cmdMsg();
-  } else if (parsedArgs.values.log) {
-    await cmdLog({
-      limit: parsedArgs.values.limit,
-      since: parsedArgs.values.since,
-      sort: parsedArgs.values.sort,
-      exclude: parsedArgs.values.exclude,
-      unhighlighted: parsedArgs.values.unhighlighted,
-      msgFormat: parsedArgs.values.msgFormat,
-    });
-  }
 }
 
 // Ignore top level errors
