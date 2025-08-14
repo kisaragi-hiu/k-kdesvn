@@ -14,7 +14,7 @@ function ensureArray<T>(val: T) {
 const SvnLogEntry = z.object({
   ["@_revision"]: z.string(),
   author: z.string(),
-  date: z.string(),
+  date: z.iso.datetime().transform((val) => Date.parse(val)),
   msg: z.string(),
 });
 export const SvnLogRaw = z.object({
@@ -24,10 +24,13 @@ export const SvnLogRaw = z.object({
 });
 export const ArgLogMsgFormat = z.enum(["full", "one-line", "none"]);
 export type ArgLogMsgFormat = z.infer<typeof ArgLogMsgFormat>;
+export const ArgLogSort = z.enum(["new-first", "old-first", "none"]);
+export type ArgLogSort = z.infer<typeof ArgLogSort>;
 
 export async function fetchLogEntries(opts?: {
   limit?: string;
   revision?: string;
+  sort?: ArgLogSort;
 }) {
   // We want it to persist.
   const cacheFile = path.join(
@@ -48,5 +51,15 @@ export async function fetchLogEntries(opts?: {
 
   const parser = new XMLParser({ ignoreAttributes: false });
   const raw = parser.parse(output);
-  return SvnLogRaw.parse(raw).log.logentry;
+  const entries = SvnLogRaw.parse(raw).log.logentry;
+  if (opts?.sort === "new-first" || opts?.sort === undefined) {
+    entries.sort(({ date: dateA }, { date: dateB }) => {
+      return dateB - dateA;
+    });
+  } else if (opts?.sort === "old-first") {
+    entries.sort(({ date: dateA }, { date: dateB }) => {
+      return dateA - dateB;
+    });
+  }
+  return entries;
 }

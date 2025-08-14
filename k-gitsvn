@@ -19,7 +19,7 @@ chalk.level = 3;
 
 import { link } from "npm:ansi-escapes";
 
-import { fetchLogEntries, ArgLogMsgFormat } from "./utils.ts";
+import { fetchLogEntries, ArgLogMsgFormat, ArgLogSort } from "./utils.ts";
 
 function showHelp() {
   console.log(`k-gitsvn [options]
@@ -41,6 +41,7 @@ Subcommands and options:
     --exclude <comma separated names>: Exclude a different set of authors
     --unhighlighted <comma separated names>: Highlight everyone except these
     --msgFormat none|full|one-line: how to show messages. Defaults to full messages.
+    --sort none|new-first|old-first: how to sort messages. Defaults to new to old.
     Example:
       Fetch the last 100 revisions then exclude scripty changes:
         k-gitsvn --log -l 100
@@ -112,14 +113,18 @@ async function cmdLog(opts?: {
   exclude?: string;
   /** Highlight all authors except these. Comma-separated. Defaults to "moonlight". */
   unhighlighted?: string;
+  /** How to sort log entries. Undefined means return whatever svn log returns. */
+  sort?: ArgLogSort;
   msgFormat?: ArgLogMsgFormat;
 }) {
   console.error("Fetching log messages from remote...");
   const limit = opts?.limit;
+  const sort = opts?.sort;
   const revision = opts?.since && `{${opts.since}}:HEAD`;
   const logentries = await fetchLogEntries({
     limit,
     revision,
+    sort,
   });
   const sep = "-".repeat(72);
   const excludeSet = new Set(
@@ -145,7 +150,7 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
   for (const entry of logentries) {
     authors.set(entry.author, (authors.get(entry.author) || 0) + 1);
     if (excludeSet.has(entry.author)) continue;
-    const moment = Date.parse(entry.date);
+    const moment = entry.date;
     console.log(sep);
     const revision = entry["@_revision"];
     console.log(
@@ -191,6 +196,7 @@ async function main() {
       log: { type: "boolean" },
       limit: { type: "string", short: "l" },
       since: { type: "string" },
+      sort: { type: "string" },
       exclude: { type: "string" },
       unhighlighted: { type: "string" },
       msgFormat: { type: "string" },
@@ -217,9 +223,14 @@ async function main() {
       parsedArgs.values.msgFormat === undefined
         ? undefined
         : ArgLogMsgFormat.parse(parsedArgs.values.msgFormat);
+    const sort =
+      parsedArgs.values.sort === undefined
+        ? undefined
+        : ArgLogSort.parse(parsedArgs.values.sort);
     await cmdLog({
       limit: parsedArgs.values.limit,
       since: parsedArgs.values.since,
+      sort: sort,
       exclude: parsedArgs.values.exclude,
       unhighlighted: parsedArgs.values.unhighlighted,
       msgFormat: msgFormat,
