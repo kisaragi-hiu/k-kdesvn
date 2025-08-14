@@ -11,6 +11,7 @@ import path from "node:path";
 // Just for formatting timestamps in the current timezone offset, unfortunately
 import { formatISO } from "npm:date-fns";
 import { $, chalk } from "npm:zx";
+import { program, Option } from "npm:commander";
 
 // Force colors on even if we're piping to another program
 // The main program we're piping to is `less -R`. We just want paging for the
@@ -20,6 +21,75 @@ chalk.level = 3;
 import { link } from "npm:ansi-escapes";
 
 import { fetchLogEntries, ArgLogMsgFormat, ArgLogSort } from "./utils.ts";
+
+program.description(`Commands for managing a local checkout of an svn repository with git.
+
+The Git repository is only here locally, and is used for local diff checking.`);
+
+program
+  .command("setup")
+  .description("Make sure .svn is ignored")
+  .action(cmdSetup);
+
+program
+  .command("check")
+  .description("Do an msgfmt check for all po files")
+  .action(cmdCheck);
+
+program
+  .command("update")
+  .description("svn update; git add .; git commit")
+  .action(cmdUpdate);
+
+program
+  .command("msg")
+  .summary("Copy latest Git commit message into the clipboard.")
+  .description(
+    `Copy latest Git commit message into the clipboard.
+Assumes xclip is installed and working.
+`
+  )
+  .action(cmdMsg);
+
+program
+  .command("log")
+  .summary("Like `svn log` but exclude revisions from scripty.")
+  .description(
+    `Like \`svn log\` but exclude revisions from scripty.
+
+Example:
+  Fetch the last 100 revisions then exclude scripty changes:
+    k-gitsvn log -l 100
+  Fetch revisions since 2025-01-01 then exclude scripty changes:
+    k-gitsvn log --since "2025-01-01"
+  Fetch the last 100 revisions excluding authors "a" and "b":
+    k-gitsvn log --exclude "a,b" # scripty is included in this case`
+  )
+  .option("-l, --limit <n>", "the --limit argument of svn log")
+  .option("--since <date>", "Provide log from <date> to HEAD.")
+  .option(
+    "--exclude <authors...>",
+    'Exclude a different set of authors. Defaults to ["scripty"].'
+  )
+  .option(
+    "--unhighlighted <authors...>",
+    'Highlight everyone except these. Defaults to ["moonlight"].'
+  )
+  .addOption(
+    new Option(
+      "--msg-format <none|full|one-line>",
+      "How to show messages. Defaults to full messages."
+    ).choices(["none", "full", "one-line"])
+  )
+  .addOption(
+    new Option(
+      "--sort <none|new-first|old-first>",
+      "How to sort messages. Defaults to new to old."
+    ).choices(["none", "new-first", "old-first"])
+  )
+  .action((opts) => {
+    console.log(opts);
+  });
 
 function showHelp() {
   console.log(`k-gitsvn [options]
@@ -239,4 +309,4 @@ async function main() {
 // thing, the pager doesn't consume the entire pipe, which leads to a
 // BrokenPipe error.
 // This is the overkill but fast way to get rid of it.
-main().catch(() => {});
+program.parseAsync().catch(() => {});

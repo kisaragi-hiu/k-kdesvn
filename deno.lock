@@ -2,6 +2,7 @@
   "version": "4",
   "specifiers": {
     "npm:ansi-escapes@*": "7.0.0",
+    "npm:commander@*": "14.0.0",
     "npm:date-fns@*": "4.1.0",
     "npm:fast-xml-parser@*": "5.2.5",
     "npm:zod@*": "4.0.15",
@@ -13,6 +14,9 @@
       "dependencies": [
         "environment"
       ]
+    },
+    "commander@14.0.0": {
+      "integrity": "sha512-2uM9rYjPvyq39NwLRqaiLtWHyDC1FvryJDa2ATTVims5YAS4PupsEQsDvP14FqhFr0P49CYDugi59xaxJlTXRA=="
     },
     "date-fns@4.1.0": {
       "integrity": "sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg=="
