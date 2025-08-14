@@ -169,8 +169,6 @@ async function cmdLog(opts?: {
   //   const stream = process.stdout.isTTY ? subprocess.stdin : process.stdout;
   // but Deno reports stream.write() as an error in that case for some reason.
   // Also, console.log accepts all kinds of objects, which is convenient.
-  // TODO: we can make a library out of this
-  // (that's a stupid reference)
   const consol = process.stdout.isTTY
     ? new Console({ stdout: subprocess.stdin, colorMode: true })
     : console;
