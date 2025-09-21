@@ -53,3 +53,45 @@ export async function fetchLogEntries(opts?: {
   }
   return entries;
 }
+
+// Simplified from formatISO from date-fns
+// Differences:
+// - addLeadingZeros helper inlined as-is (plus argument types)
+// - remove options and only return date+time and with separators
+// - reorder some stuff
+export function formatISO(moment: number | Date) {
+  function addLeadingZeros(number: number, targetLength: number) {
+    const sign = number < 0 ? "-" : "";
+    const output = Math.abs(number).toString().padStart(targetLength, "0");
+    return sign + output;
+  }
+  const dateObj = moment instanceof Date ? moment : new Date(moment);
+  // underlying data
+  const day = addLeadingZeros(dateObj.getDate(), 2);
+  const month = addLeadingZeros(dateObj.getMonth() + 1, 2);
+  const year = addLeadingZeros(dateObj.getFullYear(), 4);
+  const hour = addLeadingZeros(dateObj.getHours(), 2);
+  const minute = addLeadingZeros(dateObj.getMinutes(), 2);
+  const second = addLeadingZeros(dateObj.getSeconds(), 2);
+  const offset = dateObj.getTimezoneOffset();
+
+  // final parts
+  const date = `${year}-${month}-${day}`;
+  const time = `${hour}:${minute}:${second}`;
+  const tzOffset =
+    offset === 0
+      ? "Z"
+      : (() => {
+          const absoluteOffset = Math.abs(offset);
+          const hourOffset = addLeadingZeros(
+            Math.trunc(absoluteOffset / 60),
+            2,
+          );
+          const minuteOffset = addLeadingZeros(absoluteOffset % 60, 2);
+          // If less than 0, the sign is +, because it is ahead of time.
+          const sign = offset < 0 ? "+" : "-";
+          return `${sign}${hourOffset}:${minuteOffset}`;
+        })();
+
+  return `${date}T${time}${tzOffset}`;
+}

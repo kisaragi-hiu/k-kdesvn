@@ -9,8 +9,6 @@ import * as process from "node:process";
 import path from "node:path";
 import { Console } from "node:console";
 
-// Just for formatting timestamps in the current timezone offset, unfortunately
-import { formatISO } from "npm:date-fns";
 import { $, chalk } from "npm:zx";
 import { program, Option } from "npm:commander";
 
@@ -21,7 +19,12 @@ chalk.level = 3;
 
 import { link } from "npm:ansi-escapes";
 
-import { fetchLogEntries, ArgLogMsgFormat, ArgLogSort } from "./utils.ts";
+import {
+  formatISO,
+  fetchLogEntries,
+  ArgLogMsgFormat,
+  ArgLogSort,
+} from "./utils.ts";
 
 program.description(`Commands for managing a local checkout of an svn repository with git.
 
