@@ -36,7 +36,7 @@ export async function fetchLogEntries(opts?: {
       $`svn log --xml ${[
         ...(opts?.limit ? ["--limit", opts.limit] : []),
         ...(opts?.revision ? ["--revision", opts.revision] : []),
-      ]}`
+      ]}`,
   );
 
   const parser = new XMLParser({ ignoreAttributes: false });

@@ -48,7 +48,7 @@ program
   .description(
     `Copy latest Git commit message into the clipboard.
 Assumes xclip is installed and working.
-`
+`,
   )
   .action(cmdMsg);
 
@@ -64,33 +64,33 @@ Example:
   Fetch revisions since 2025-01-01 then exclude scripty changes:
     k-gitsvn log --since "2025-01-01"
   Fetch the last 100 revisions excluding authors "a" and "b":
-    k-gitsvn log --exclude "a,b" # scripty is included in this case`
+    k-gitsvn log --exclude "a,b" # scripty is included in this case`,
   )
   .option("-l, --limit <n>", "the --limit argument of svn log")
   .option("--since <date>", "Provide log from <date> to HEAD.")
   .option(
     "--exclude <authors...>",
-    'Exclude a different set of authors. Defaults to ["scripty"].'
+    'Exclude a different set of authors. Defaults to ["scripty"].',
   )
   .option(
     "--unhighlighted <authors...>",
-    'Highlight everyone except these. Defaults to ["moonlight"].'
+    'Highlight everyone except these. Defaults to ["moonlight"].',
   )
   .addOption(
     new Option(
       `--msg-format <${ArgLogMsgFormat.options.join("|")}>`,
-      "How to show messages. Defaults to full messages."
+      "How to show messages. Defaults to full messages.",
     )
       .choices(ArgLogMsgFormat.options)
-      .default("full")
+      .default("full"),
   )
   .addOption(
     new Option(
       `--sort <${ArgLogSort.options}>`,
-      "How to sort messages. Defaults to new to old."
+      "How to sort messages. Defaults to new to old.",
     )
       .default("new-first")
-      .choices(ArgLogSort.options)
+      .choices(ArgLogSort.options),
   )
   .action(cmdLog);
 
@@ -185,12 +185,12 @@ async function cmdLog(opts?: {
     // empty string is falsy.
     // We want an empty string to take the latter case and result in an empty
     // excludes list instead of using the fallback.
-    opts?.exclude === undefined ? ["scripty"] : opts?.exclude.split(",")
+    opts?.exclude === undefined ? ["scripty"] : opts?.exclude.split(","),
   );
   const unhighlightedSet = new Set(
     opts?.unhighlighted === undefined
       ? ["moonlight"]
-      : opts?.unhighlighted.split(",")
+      : opts?.unhighlighted.split(","),
   );
   const authors = new Map<string, number>();
 
@@ -217,12 +217,12 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
     consol.log(
       `r${link(
         revision,
-        `https://websvn.kde.org/?view=revision&revision=${revision}`
+        `https://websvn.kde.org/?view=revision&revision=${revision}`,
       )} | ${
         unhighlightedSet.has(entry.author)
           ? entry.author
           : chalk.yellow(entry.author)
-      } | ${formatISO(moment)}`
+      } | ${formatISO(moment)}`,
     );
     if (msgFormat === "full") {
       consol.log(entry.msg);
@@ -239,7 +239,7 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
   consol.log(`
 Stats:`);
   consol.log(
-    Object.fromEntries([...authors].sort((a, b) => (a[1] < b[1] ? 1 : -1)))
+    Object.fromEntries([...authors].sort((a, b) => (a[1] < b[1] ? 1 : -1))),
   );
   subprocess.stdin.end();
 }
