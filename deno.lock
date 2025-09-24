@@ -1,18 +1,17 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@kisaragi-hiu/cached-fetch@*": "0.1.1",
+    "npm:@kisaragi-hiu/cached-fetch@*": "0.1.2",
     "npm:@types/node@*": "24.2.0",
-    "npm:ansi-escapes@*": "7.0.0",
-    "npm:commander@*": "14.0.0",
-    "npm:date-fns@*": "4.1.0",
+    "npm:ansi-escapes@*": "7.1.1",
+    "npm:commander@*": "14.0.1",
     "npm:fast-xml-parser@*": "5.2.5",
-    "npm:zod@*": "4.0.15",
-    "npm:zx@*": "8.8.0"
+    "npm:zod@*": "4.1.11",
+    "npm:zx@*": "8.8.3"
   },
   "npm": {
-    "@kisaragi-hiu/cached-fetch@0.1.1": {
-      "integrity": "sha512-4dJjwT9/nkaxaSAG6mHrIswTWj48GTQvxuPtZwVXMGKyOx0+EDfEAlBoMqAY2F1FCekV93qcVfm61ShxF1x7mw=="
+    "@kisaragi-hiu/cached-fetch@0.1.2": {
+      "integrity": "sha512-N1egRSv4xmgNhzhh0xxL5Zab8q+XPL6GUh+93nvZiRt0ZAJtRmRswm0Bbp3Tu95AHbVvPB9GGKsHLJmzGaHGCA=="
     },
     "@types/node@24.2.0": {
       "integrity": "sha512-3xyG3pMCq3oYCNg7/ZP+E1ooTaGB4cG8JWRsqqOYQdbWNY4zbaV0Ennrd7stjiJEFZCaybcIgpTjJWHRfBSIDw==",
@@ -20,17 +19,14 @@
         "undici-types"
       ]
     },
-    "ansi-escapes@7.0.0": {
-      "integrity": "sha512-GdYO7a61mR0fOlAsvC9/rIHf7L96sBc6dEWzeOu+KAea5bZyQRPIpojrVoI4AXGJS/ycu/fBTdLrUkA4ODrvjw==",
+    "ansi-escapes@7.1.1": {
+      "integrity": "sha512-Zhl0ErHcSRUaVfGUeUdDuLgpkEo8KIFjB4Y9uAc46ScOpdDiU1Dbyplh7qWJeJ/ZHpbyMSM26+X3BySgnIz40Q==",
       "dependencies": [
         "environment"
       ]
     },
-    "commander@14.0.0": {
-      "integrity": "sha512-2uM9rYjPvyq39NwLRqaiLtWHyDC1FvryJDa2ATTVims5YAS4PupsEQsDvP14FqhFr0P49CYDugi59xaxJlTXRA=="
-    },
-    "date-fns@4.1.0": {
-      "integrity": "sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg=="
+    "commander@14.0.1": {
+      "integrity": "sha512-2JkV3gUZUVrbNA+1sjBOYLsMZ5cEEl8GTFP2a4AVz5hvasAMCQ1D2l2le/cX+pV4N6ZU17zjUahLpIXRrnWL8A=="
     },
     "environment@1.1.0": {
       "integrity": "sha512-xUtoPkMggbz0MPyPiIWr1Kp4aeWJjDZ6SMvURhimjdZgsRuDplF5/s9hcgGhyXMhs+6vpnuoiZ2kFiu3FMnS8Q=="
@@ -48,11 +44,11 @@
     "undici-types@7.10.0": {
       "integrity": "sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag=="
     },
-    "zod@4.0.15": {
-      "integrity": "sha512-2IVHb9h4Mt6+UXkyMs0XbfICUh1eUrlJJAOupBHUhLRnKkruawyDddYRCs0Eizt900ntIMk9/4RksYl+FgSpcQ=="
+    "zod@4.1.11": {
+      "integrity": "sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg=="
     },
-    "zx@8.8.0": {
-      "integrity": "sha512-v0VZXgSHusDvTtZROno3Ws8xkE1uNSSwH/yF8Fm+ZwBrYhr+bRNNpsnTJ32eR/t6umc7lAz5WqdP800ugW9zFA==",
+    "zx@8.8.3": {
+      "integrity": "sha512-8GWaBTVU6wzTdqO0v5qwGMUFLCYduW7UUxaliRD+FXGRfYM8KLDGL93idbdGFLomHDi18ZxCfhAJqYZB8rJNvw==",
       "bin": true
     }
   }
