@@ -56,6 +56,16 @@ Assumes xclip is installed and working.
   .action(cmdMsg);
 
 program
+  .command("pocount")
+  .summary("Show stats of the current folder with pocount.")
+  .action(async () => {
+    await $({
+      verbose: true,
+      nothrow: true,
+    })`fd -L -e po -X pocount | grep TOTAL -A 8 | grep -v TOTAL`;
+  });
+
+program
   .command("log")
   .summary("Like `svn log` but exclude revisions from scripty.")
   .description(
