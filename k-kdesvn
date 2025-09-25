@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno run -A
 // -*- mode: typescript; -*-
-/** Commands for managing a local svn repository checkout. */
+/** Commands for managing a local kdesvn repository checkout. */
 // vim: ft=typescript
 
 import { mkdirSync, writeFileSync } from "node:fs";
