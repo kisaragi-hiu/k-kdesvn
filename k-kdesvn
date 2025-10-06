@@ -30,6 +30,7 @@ chalk.level = 3;
 import { link } from "npm:ansi-escapes";
 
 import {
+  parseCommaSeparated,
   formatISO,
   fetchLogEntries,
   ArgLogMsgFormat,
@@ -335,19 +336,9 @@ async function cmdLog(opts?: {
   const sort = ArgLogSort.parse(opts?.sort ?? "new-first");
   const msgFormat = ArgLogMsgFormat.parse(opts?.msgFormat ?? "full");
   const sep = "-".repeat(72);
-  const excludeSet = new Set(
-    // We have to use an explicit check against undefined, because the
-    // empty string is falsy.
-    // We want an empty string to take the latter case and result in an empty
-    // excludes list instead of using the fallback.
-    opts?.exclude === undefined
-      ? ["scripty"]
-      : opts?.exclude.flatMap((x) => x.split(",")),
-  );
+  const excludeSet = new Set(parseCommaSeparated(opts?.exclude, ["scripty"]));
   const unhighlightedSet = new Set(
-    opts?.unhighlighted === undefined
-      ? ["moonlight"]
-      : opts?.unhighlighted.flatMap((x) => x.split(",")),
+    parseCommaSeparated(opts?.unhighlighted, ["moonlight"]),
   );
   const authors = new Map<string, number>();
 

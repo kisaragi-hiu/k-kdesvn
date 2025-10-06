@@ -95,3 +95,21 @@ export function formatISO(moment: number | Date) {
 
   return `${date}T${time}${tzOffset}`;
 }
+
+/**
+ * Parse `val` as a comma-separated string.
+ * Normalizes string[] and accepts undefined.
+ * Return `def` instead if `val` is undefined.
+ */
+export function parseCommaSeparated(
+  val: string | string[] | undefined,
+  def: string[] = [],
+) {
+  // We have to use an explicit check against undefined, because the
+  // empty string is falsy.
+  // We want an empty string to take the latter case and result in an empty
+  // list instead of returning `def`.
+  if (val === undefined) return def;
+  if (typeof val === "string") return val.split(",");
+  return val.flatMap((x) => x.split(","));
+}
