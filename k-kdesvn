@@ -20,7 +20,7 @@ import { Console } from "node:console";
 import fastCartesian from "npm:fast-cartesian";
 import { $, chalk, cd } from "npm:zx";
 
-import { program, Option } from "npm:commander";
+import { program, Option } from "npm:@commander-js/extra-typings";
 
 // Force colors on even if we're piping to another program
 // The main program we're piping to is `less -R`. We just want paging for the
@@ -308,10 +308,10 @@ async function cmdLog(opts?: {
   limit?: string;
   /** List changes from this date to HEAD. */
   since?: string;
-  /** Exclude these authors. Comma-separated. Defaults to "scripty". */
-  exclude?: string;
-  /** Highlight all authors except these. Comma-separated. Defaults to "moonlight". */
-  unhighlighted?: string;
+  /** Exclude these authors. Comma-separated but can also be an array. Defaults to "scripty". */
+  exclude?: string[];
+  /** Highlight all authors except these. Comma-separated but can also be an array. Defaults to "moonlight". */
+  unhighlighted?: string[];
   /** How to sort log entries. Undefined means return whatever svn log returns. */
   sort?: string;
   /** How to show commit messages. */
@@ -340,12 +340,14 @@ async function cmdLog(opts?: {
     // empty string is falsy.
     // We want an empty string to take the latter case and result in an empty
     // excludes list instead of using the fallback.
-    opts?.exclude === undefined ? ["scripty"] : opts?.exclude.split(","),
+    opts?.exclude === undefined
+      ? ["scripty"]
+      : opts?.exclude.flatMap((x) => x.split(",")),
   );
   const unhighlightedSet = new Set(
     opts?.unhighlighted === undefined
       ? ["moonlight"]
-      : opts?.unhighlighted.split(","),
+      : opts?.unhighlighted.flatMap((x) => x.split(",")),
   );
   const authors = new Map<string, number>();
 

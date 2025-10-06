@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "npm:@commander-js/extra-typings@*": "14.0.0_commander@14.0.1",
     "npm:@kisaragi-hiu/cached-fetch@*": "0.1.2",
     "npm:@types/node@*": "24.2.0",
     "npm:ansi-escapes@*": "7.1.1",
@@ -11,6 +12,12 @@
     "npm:zx@*": "8.8.3"
   },
   "npm": {
+    "@commander-js/extra-typings@14.0.0_commander@14.0.1": {
+      "integrity": "sha512-hIn0ncNaJRLkZrxBIp5AsW/eXEHNKYQBh0aPdoUqNgD+Io3NIykQqpKFyKcuasZhicGaEZJX/JBSIkZ4e5x8Dg==",
+      "dependencies": [
+        "commander"
+      ]
+    },
     "@kisaragi-hiu/cached-fetch@0.1.2": {
       "integrity": "sha512-N1egRSv4xmgNhzhh0xxL5Zab8q+XPL6GUh+93nvZiRt0ZAJtRmRswm0Bbp3Tu95AHbVvPB9GGKsHLJmzGaHGCA=="
     },
