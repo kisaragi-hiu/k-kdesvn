@@ -18,21 +18,7 @@ import { Console } from "node:console";
 // Fancy name for "every combination" that Shell exposes in the {a,b}{c,d}
 // wildcard syntax.
 import fastCartesian from "npm:fast-cartesian";
-import { $, chalk, cd, log as defaultLog } from "npm:zx";
-
-// zx configured to show command output but not the command line itself
-const $$ = $({
-  verbose: true,
-  log: (entry) => {
-    switch (entry.kind) {
-      case "cmd":
-        // noop
-        break;
-      default:
-        defaultLog(entry);
-    }
-  },
-});
+import { $, chalk, cd } from "npm:zx";
 
 import { program, Option } from "npm:commander";
 
@@ -89,8 +75,8 @@ async function checkoutLanguages(languages: string[]) {
     );
     process.exit(1);
   }
-  console.log(chalk.bold(`Setting up language paths...`));
-  await $$`svn update --set-depth infinity ${fastCartesian([
+  console.log(`Setting up language paths...`);
+  await $({ verbose: true })`svn update --set-depth infinity ${fastCartesian([
     ["trunk", "branches/stable"],
     ["l10n-kf5", "l10n-kf6"],
     languages,
@@ -143,11 +129,9 @@ program
       }
       if (existsSync(dir)) {
         if (opts.force) {
-          process.stdout.write(
-            chalk.bold(`Deleting ${dir} before cloning into it...`),
-          );
+          process.stdout.write(`Deleting ${dir} before cloning into it...`);
           rmSync(dir, { recursive: true, force: true });
-          process.stdout.write(chalk.bold(`done\n`));
+          process.stdout.write(`done\n`);
         } else {
           console.log(`${dir} already exists.`);
           process.exit(1);
@@ -157,12 +141,13 @@ program
         ? "svn://anonsvn.kde.org/home/kde/"
         : "svn+ssh://svn@svn.kde.org/home/kde/";
       console.log(
-        chalk.bold(
-          opts.readOnly
-            ? `Checking out the read-only KDE subversion repository into ${dir}...`
-            : `Checking out the read-write KDE subversion repository into ${dir}...`,
-        ),
+        opts.readOnly
+          ? `Checking out the read-only KDE subversion repository into ${dir}...`
+          : `Checking out the read-write KDE subversion repository into ${dir}...`,
       );
+      const $$ = $({
+        verbose: true,
+      });
       await $$`svn checkout ${repoUrl} --depth=empty ${dir}`;
       cd(dir);
       // The goal:
@@ -174,7 +159,7 @@ program
       // - Set depth to immediates, which includes irrelevant folders and files
       // - Set depth to files, which has irrelevant files but is the least bad
       // So this is setting the directory.
-      console.log(chalk.bold(`Setting up parent paths...`));
+      console.log(`Setting up parent paths...`);
       await $$`svn update --set-depth files trunk`;
       await $$`svn update --set-depth files branches`;
       await $$`svn update --set-depth files branches/stable`;
@@ -187,12 +172,12 @@ program
 
       await checkoutLanguages(["templates", ...languages]);
 
-      console.log(chalk.bold(`Setting up the local Git repository...`));
+      console.log(`Setting up the local Git repository...`);
       await $$`git init`;
-      console.log(chalk.bold(`Excluding .svn from Git...`));
+      console.log(`Excluding .svn from Git...`);
       mkdirSync(path.join(".git", "info"), { recursive: true });
       writeFileSync(path.join(".git", "info", "exclude"), `.svn/`);
-      console.log(chalk.bold(`Creating initial Git commit...`));
+      console.log(`Creating initial Git commit...`);
       await $$`git add .; git commit -m before`;
       console.log(`Checkout done.
 While at the root of the working copy:
