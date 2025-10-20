@@ -59,6 +59,65 @@ program
   .description("Make sure .svn is ignored")
   .action(cmdSetup);
 
+/**
+ * Check out `languages` for the current repository.
+ * Assumes current directory is the top level of the svn working copy.
+ */
+async function checkoutLanguages(languages: string[]) {
+  // Valid team names. We read them here because they've only become
+  // available here.
+  const teamnames = readFileSync(`trunk/l10n-kf6/teamnames`, {
+    encoding: "utf-8",
+  })
+    .split("\n")
+    .map((x) => {
+      const trimmed = x.trim();
+      return trimmed.length === 0 || trimmed.startsWith("#")
+        ? undefined
+        : trimmed.split("=")[0];
+    })
+    .filter((x) => typeof x === "string");
+  const invalidLanguages = [
+    ...new Set(languages).difference(new Set(teamnames)),
+  ];
+  if (invalidLanguages.length > 0) {
+    console.log(
+      invalidLanguages.length === 1
+        ? `Invalid language code provided: ${invalidLanguages}`
+        : `Invalid language codes provided: ${invalidLanguages}`,
+    );
+    process.exit(1);
+  }
+  console.log(chalk.bold(`Setting up language paths...`));
+  await $$`svn update --set-depth infinity ${fastCartesian([
+    ["trunk", "branches/stable"],
+    ["l10n-kf5", "l10n-kf6"],
+    languages,
+  ]).map((a) => a.join("/"))}`;
+}
+
+program
+  .command("checkout-language")
+  .description("Add languages to an existing working copy.")
+  .argument(
+    "<langs>",
+    "Which languages to clone, as language codes. Comma-separated.",
+  )
+  .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
+  .action(async (langs: string, dir: string) => {
+    const languages = langs.split(",").map((x) => x.trim());
+    if (languages.length < 1) {
+      console.log(`Please specify more than one language`);
+      process.exit(1);
+    }
+    if (!existsSync(path.join(dir, ".svn"))) {
+      console.log(`${dir} is not an existing svn working copy.`);
+      process.exit(1);
+    }
+    cd(dir);
+    await checkoutLanguages(languages);
+  });
+
 program
   .command("checkout")
   .description(
@@ -82,7 +141,6 @@ program
         console.log(`Please specify more than one language`);
         process.exit(1);
       }
-      const isExistingCheckout = existsSync(path.join(dir, ".svn"));
       if (existsSync(dir)) {
         if (opts.force) {
           process.stdout.write(
@@ -90,26 +148,22 @@ program
           );
           rmSync(dir, { recursive: true, force: true });
           process.stdout.write(chalk.bold(`done\n`));
-        } else if (!isExistingCheckout) {
-          console.log(
-            `${dir} already exists and is not a subversion working copy.`,
-          );
+        } else {
+          console.log(`${dir} already exists.`);
           process.exit(1);
         }
       }
       const repoUrl = opts.readOnly
         ? "svn://anonsvn.kde.org/home/kde/"
         : "svn+ssh://svn@svn.kde.org/home/kde/";
-      if (!isExistingCheckout) {
-        console.log(
-          chalk.bold(
-            opts.readOnly
-              ? `Checking out the read-only KDE subversion repository into ${dir}...`
-              : `Checking out the read-write KDE subversion repository into ${dir}...`,
-          ),
-        );
-        await $$`svn checkout ${repoUrl} --depth=empty ${dir}`;
-      }
+      console.log(
+        chalk.bold(
+          opts.readOnly
+            ? `Checking out the read-only KDE subversion repository into ${dir}...`
+            : `Checking out the read-write KDE subversion repository into ${dir}...`,
+        ),
+      );
+      await $$`svn checkout ${repoUrl} --depth=empty ${dir}`;
       cd(dir);
       // The goal:
       //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{templates,...}
@@ -120,49 +174,18 @@ program
       // - Set depth to immediates, which includes irrelevant folders and files
       // - Set depth to files, which has irrelevant files but is the least bad
       // So this is setting the directory.
-      if (!isExistingCheckout) {
-        console.log(chalk.bold(`Setting up parent paths...`));
-        await $$`svn update --set-depth files trunk`;
-        await $$`svn update --set-depth files branches`;
-        await $$`svn update --set-depth files branches/stable`;
-        // Doing the product in JS makes it easier to move away from shell in
-        // the future, and also makes it easier to pass in variables
-        await $$`svn update --set-depth files ${fastCartesian([
-          ["trunk", "branches/stable"],
-          ["l10n-kf5", "l10n-kf6"],
-        ]).map((a) => a.join("/"))}`;
-      }
-
-      // Valid team names. We read them here because they've only become
-      // available here.
-      const teamnames = readFileSync(`trunk/l10n-kf6/teamnames`, {
-        encoding: "utf-8",
-      })
-        .split("\n")
-        .map((x) => {
-          const trimmed = x.trim();
-          return trimmed.length === 0 || trimmed.startsWith("#")
-            ? undefined
-            : trimmed.split("=")[0];
-        })
-        .filter((x) => typeof x === "string");
-      const invalidLanguages = [
-        ...new Set(languages).difference(new Set(teamnames)),
-      ];
-      if (invalidLanguages.length > 0) {
-        console.log(
-          invalidLanguages.length === 1
-            ? `Invalid language code provided: ${invalidLanguages}`
-            : `Invalid language codes provided: ${invalidLanguages}`,
-        );
-        process.exit(1);
-      }
-      console.log(chalk.bold(`Setting up language paths...`));
-      await $$`svn update --set-depth infinity ${fastCartesian([
+      console.log(chalk.bold(`Setting up parent paths...`));
+      await $$`svn update --set-depth files trunk`;
+      await $$`svn update --set-depth files branches`;
+      await $$`svn update --set-depth files branches/stable`;
+      // Doing the product in JS makes it easier to move away from shell in
+      // the future, and also makes it easier to pass in variables
+      await $$`svn update --set-depth files ${fastCartesian([
         ["trunk", "branches/stable"],
         ["l10n-kf5", "l10n-kf6"],
-        ["templates", ...languages],
       ]).map((a) => a.join("/"))}`;
+
+      await checkoutLanguages(["templates", ...languages]);
     },
   );
 
