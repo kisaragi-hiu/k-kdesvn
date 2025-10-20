@@ -3,7 +3,13 @@
 /** Commands for managing a local kdesvn repository checkout. */
 // vim: ft=typescript
 
-import { mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import {
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  rmSync,
+} from "node:fs";
 import { spawn } from "node:child_process";
 import * as process from "node:process";
 import path from "node:path";
@@ -56,11 +62,24 @@ program
 program
   .command("checkout")
   .description("Clone/checkout a new working copy")
+  .argument(
+    "<langs>",
+    "Which languages to clone, as language codes. Comma-separated.",
+  )
   .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
   .option("--read-only", "the --limit argument of svn log")
   .option("--force", "Clear `dir` if it already exists")
   .action(
-    async (dir: string, opts: { readOnly?: boolean; force?: boolean }) => {
+    async (
+      langs: string,
+      dir: string,
+      opts: { readOnly?: boolean; force?: boolean },
+    ) => {
+      const languages = langs.split(",").map((x) => x.trim());
+      if (languages.length < 1) {
+        console.log(`Please specify more than one language`);
+        process.exit(1);
+      }
       if (existsSync(dir)) {
         if (opts.force) {
           process.stdout.write(
@@ -95,10 +114,35 @@ program
         ["trunk", "branches/stable"],
         ["l10n-kf5", "l10n-kf6"],
       ]).map((a) => a.join("/"))}`;
+
+      // Valid team names. We read them here because they've only become
+      // available here.
+      const teamnames = readFileSync(`trunk/l10n-kf6/teamnames`, {
+        encoding: "utf-8",
+      })
+        .split("\n")
+        .map((x) => {
+          const trimmed = x.trim();
+          return trimmed.length === 0 || trimmed.startsWith("#")
+            ? undefined
+            : trimmed.split("=")[0];
+        })
+        .filter((x) => typeof x === "string");
+      const invalidLanguages = [
+        ...new Set(languages).difference(new Set(teamnames)),
+      ];
+      if (invalidLanguages.length > 0) {
+        console.log(
+          invalidLanguages.length === 1
+            ? `${invalidLanguages} is not a valid language code.`
+            : `${invalidLanguages} are not valid language codes.`,
+        );
+        process.exit(1);
+      }
       await $$`svn update --set-depth files ${fastCartesian([
         ["trunk", "branches/stable"],
         ["l10n-kf5", "l10n-kf6"],
-        ["templates", "zh_TW"],
+        ["templates", ...languages],
       ]).map((a) => a.join("/"))}`;
     },
   );
