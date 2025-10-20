@@ -99,15 +99,17 @@ async function checkoutLanguages(languages: string[]) {
 program
   .command("checkout-language")
   .description("Add languages to an existing working copy.")
-  .argument(
-    "<langs>",
+  .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
+  .option(
+    "--langs <languages>",
     "Which languages to clone, as language codes. Comma-separated.",
   )
-  .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
-  .action(async (langs: string, dir: string) => {
-    const languages = langs.split(",").map((x) => x.trim());
+  .action(async (dir: string, opts: { langs?: string }) => {
+    const languages = opts?.langs
+      ? opts.langs.split(",").map((x) => x.trim())
+      : [];
     if (languages.length < 1) {
-      console.log(`Please specify more than one language`);
+      console.log(`Please specify one or more languages`);
       process.exit(1);
     }
     if (!existsSync(path.join(dir, ".svn"))) {
@@ -123,20 +125,21 @@ program
   .description(
     "Clone/checkout a new working copy, or add languages to an existing working copy",
   )
-  .argument(
-    "<langs>",
+  .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
+  .option(
+    "--langs <languages>",
     "Which languages to clone, as language codes. Comma-separated.",
   )
-  .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
   .option("--read-only", "the --limit argument of svn log")
   .option("--force", "Clear `dir` if it already exists")
   .action(
     async (
-      langs: string,
       dir: string,
-      opts: { readOnly?: boolean; force?: boolean },
+      opts: { langs?: string; readOnly?: boolean; force?: boolean },
     ) => {
-      const languages = langs.split(",").map((x) => x.trim());
+      const languages = opts?.langs
+        ? opts.langs.split(",").map((x) => x.trim())
+        : [];
       if (languages.length < 1) {
         console.log(`Please specify more than one language`);
         process.exit(1);
