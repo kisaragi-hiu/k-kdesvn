@@ -61,7 +61,9 @@ program
 
 program
   .command("checkout")
-  .description("Clone/checkout a new working copy")
+  .description(
+    "Clone/checkout a new working copy, or add languages to an existing working copy",
+  )
   .argument(
     "<langs>",
     "Which languages to clone, as language codes. Comma-separated.",
@@ -80,6 +82,7 @@ program
         console.log(`Please specify more than one language`);
         process.exit(1);
       }
+      const isExistingCheckout = existsSync(path.join(dir, ".svn"));
       if (existsSync(dir)) {
         if (opts.force) {
           process.stdout.write(
@@ -87,15 +90,26 @@ program
           );
           rmSync(dir, { recursive: true, force: true });
           process.stdout.write(chalk.bold(`done\n`));
-        } else {
-          console.log(`${dir} already exists`);
+        } else if (!isExistingCheckout) {
+          console.log(
+            `${dir} already exists and is not a subversion working copy.`,
+          );
           process.exit(1);
         }
       }
       const repoUrl = opts.readOnly
         ? "svn://anonsvn.kde.org/home/kde/"
         : "svn+ssh://svn@svn.kde.org/home/kde/";
-      await $$`svn checkout ${repoUrl} --depth=empty ${dir}`;
+      if (!isExistingCheckout) {
+        console.log(
+          chalk.bold(
+            opts.readOnly
+              ? `Checking out the read-only KDE subversion repository into ${dir}...`
+              : `Checking out the read-write KDE subversion repository into ${dir}...`,
+          ),
+        );
+        await $$`svn checkout ${repoUrl} --depth=empty ${dir}`;
+      }
       cd(dir);
       // The goal:
       //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{templates,...}
@@ -106,14 +120,18 @@ program
       // - Set depth to immediates, which includes irrelevant folders and files
       // - Set depth to files, which has irrelevant files but is the least bad
       // So this is setting the directory.
-      await $$`svn update --set-depth files {trunk,branches}`;
-      await $$`svn update --set-depth files branches/stable`;
-      // Doing the product in JS makes it easier to move away from shell in
-      // the future, and also makes it easier to pass in variables
-      await $$`svn update --set-depth files ${fastCartesian([
-        ["trunk", "branches/stable"],
-        ["l10n-kf5", "l10n-kf6"],
-      ]).map((a) => a.join("/"))}`;
+      if (!isExistingCheckout) {
+        console.log(chalk.bold(`Setting up parent paths...`));
+        await $$`svn update --set-depth files trunk`;
+        await $$`svn update --set-depth files branches`;
+        await $$`svn update --set-depth files branches/stable`;
+        // Doing the product in JS makes it easier to move away from shell in
+        // the future, and also makes it easier to pass in variables
+        await $$`svn update --set-depth files ${fastCartesian([
+          ["trunk", "branches/stable"],
+          ["l10n-kf5", "l10n-kf6"],
+        ]).map((a) => a.join("/"))}`;
+      }
 
       // Valid team names. We read them here because they've only become
       // available here.
@@ -134,12 +152,13 @@ program
       if (invalidLanguages.length > 0) {
         console.log(
           invalidLanguages.length === 1
-            ? `${invalidLanguages} is not a valid language code.`
-            : `${invalidLanguages} are not valid language codes.`,
+            ? `Invalid language code provided: ${invalidLanguages}`
+            : `Invalid language codes provided: ${invalidLanguages}`,
         );
         process.exit(1);
       }
-      await $$`svn update --set-depth files ${fastCartesian([
+      console.log(chalk.bold(`Setting up language paths...`));
+      await $$`svn update --set-depth infinity ${fastCartesian([
         ["trunk", "branches/stable"],
         ["l10n-kf5", "l10n-kf6"],
         ["templates", ...languages],
