@@ -186,6 +186,14 @@ program
       ]).map((a) => a.join("/"))}`;
 
       await checkoutLanguages(["templates", ...languages]);
+
+      console.log(chalk.bold(`Setting up the local Git repository...`));
+      await $$`git init`;
+      console.log(chalk.bold(`Excluding .svn from Git...`));
+      mkdirSync(path.join(".git", "info"), { recursive: true });
+      writeFileSync(path.join(".git", "info", "exclude"), `.svn/`);
+      console.log(chalk.bold(`Creating initial Git commit...`));
+      await $$`git add .; git commit -m before`;
     },
   );
 
