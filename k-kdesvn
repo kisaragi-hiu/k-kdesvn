@@ -40,11 +40,6 @@ program.description(`Commands for managing a local checkout of an svn repository
 
 The Git repository is only here locally, and is used for local diff checking.`);
 
-program
-  .command("setup")
-  .description("Make sure .svn is ignored")
-  .action(cmdSetup);
-
 /**
  * Check out `languages` for the current repository.
  * Assumes current directory is the top level of the svn working copy.
@@ -266,19 +261,6 @@ Example:
       .choices(ArgLogSort.options),
   )
   .action(cmdLog);
-
-/** Ensure the repository is as expected. */
-async function cmdSetup() {
-  const toplevel = (await $`git rev-parse --show-toplevel`.text()).trim();
-  const dotSvnNotExcluded = (
-    await $`cd ${toplevel}; git status -s`.text()
-  ).includes(".svn");
-  if (dotSvnNotExcluded) {
-    console.log(".svn doesn't seem excluded. Excluding locally.");
-    mkdirSync(path.join(toplevel, ".git", "info"), { recursive: true });
-    writeFileSync(path.join(toplevel, ".git", "info", "exclude"), `.svn/`);
-  }
-}
 
 /**
  * Pull from svn and do a Git commit for the latest state.
