@@ -5,6 +5,7 @@
     "npm:@types/node@*": "24.2.0",
     "npm:ansi-escapes@*": "7.1.1",
     "npm:commander@*": "14.0.1",
+    "npm:fast-cartesian@*": "9.0.1",
     "npm:fast-xml-parser@*": "5.2.5",
     "npm:zod@*": "4.1.11",
     "npm:zx@*": "8.8.3"
@@ -30,6 +31,9 @@
     },
     "environment@1.1.0": {
       "integrity": "sha512-xUtoPkMggbz0MPyPiIWr1Kp4aeWJjDZ6SMvURhimjdZgsRuDplF5/s9hcgGhyXMhs+6vpnuoiZ2kFiu3FMnS8Q=="
+    },
+    "fast-cartesian@9.0.1": {
+      "integrity": "sha512-5pFE28efDys358TzLGAOeOlrYjMD+EswAojWR+Si/bz0xjder3tZbWWnKumijf63ottxxzJFcoy36lRqHLCo9A=="
     },
     "fast-xml-parser@5.2.5": {
       "integrity": "sha512-pfX9uG9Ki0yekDHx2SiuRIyFdyAr1kMIMitPvb0YBo8SUfKvia7w7FIyd/l6av85pFYRhZscS75MwMnbvY+hcQ==",

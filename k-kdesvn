@@ -3,7 +3,7 @@
 /** Commands for managing a local kdesvn repository checkout. */
 // vim: ft=typescript
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { spawn } from "node:child_process";
 import * as process from "node:process";
 import path from "node:path";
@@ -34,6 +34,53 @@ program
   .command("setup")
   .description("Make sure .svn is ignored")
   .action(cmdSetup);
+
+program
+  .command("checkout")
+  .description("Clone/checkout a new working copy")
+  .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
+  .option("--read-only", "the --limit argument of svn log")
+  .option("--force", "Clear `dir` if it already exists")
+  .action(
+    async (dir: string, opts: { readOnly?: boolean; force?: boolean }) => {
+      if (existsSync(dir)) {
+        if (opts.force) {
+          console.log(`Deleting ${dir} before cloning into it...`);
+          rmSync(dir, { recursive: true, force: true });
+        } else {
+          console.log(`${dir} already exists`);
+          process.exit(1);
+        }
+      }
+      const repoUrl = opts.readOnly
+        ? "svn://anonsvn.kde.org/home/kde/"
+        : "svn+ssh://svn@svn.kde.org/home/kde/";
+      await $$`svn checkout ${repoUrl} --depth=empty ${dir}`;
+      cd(dir);
+      // The goal:
+      //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{templates,...}
+      //   svn update --set-depth infinity trunk/l10n-kf{5,6}/{templates,...}
+      // but each parent directory needs to be a working copy, ie. checked out.
+      // To checkout each parent directory, there are only 3 options:
+      // - Set depth to infinity, which is too much
+      // - Set depth to immediates, which includes irrelevant folders and files
+      // - Set depth to files, which has irrelevant files but is the least bad
+      // So this is setting the directory.
+      await $$`svn update --set-depth files {trunk,branches}`;
+      await $$`svn update --set-depth files branches/stable`;
+      // Doing the product in JS makes it easier to move away from shell in
+      // the future, and also makes it easier to pass in variables
+      await $$`svn update --set-depth files ${fastCartesian([
+        ["trunk", "branches/stable"],
+        ["l10n-kf5", "l10n-kf6"],
+      ]).map((a) => a.join("/"))}`;
+      await $$`svn update --set-depth files ${fastCartesian([
+        ["trunk", "branches/stable"],
+        ["l10n-kf5", "l10n-kf6"],
+        ["templates", "zh_TW"],
+      ]).map((a) => a.join("/"))}`;
+    },
+  );
 
 program
   .command("check")
