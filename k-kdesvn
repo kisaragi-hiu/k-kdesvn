@@ -119,7 +119,7 @@ program
   });
 
 program
-  .command("checkout")
+  .command("clone")
   .description("Clone/checkout a new working copy")
   .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
   .option(
