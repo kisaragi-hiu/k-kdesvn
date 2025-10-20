@@ -98,33 +98,29 @@ async function checkoutLanguages(languages: string[]) {
 
 program
   .command("checkout-language")
-  .description("Add languages to an existing working copy.")
-  .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
-  .option(
-    "--langs <languages>",
+  .description("Add languages to the current working copy.")
+  .argument(
+    "<langs>",
     "Which languages to clone, as language codes. Comma-separated.",
   )
-  .action(async (dir: string, opts: { langs?: string }) => {
-    const languages = opts?.langs
-      ? opts.langs.split(",").map((x) => x.trim())
-      : [];
+  .action(async (langs: string) => {
+    const languages = langs.split(",").map((x) => x.trim());
     if (languages.length < 1) {
-      console.log(`Please specify one or more languages`);
+      console.log(`Please specify one or more languages with --langs`);
       process.exit(1);
     }
-    if (!existsSync(path.join(dir, ".svn"))) {
-      console.log(`${dir} is not an existing svn working copy.`);
+    if (!existsSync(".svn")) {
+      console.log(
+        `The current directory is not the top level of an existing svn working copy.`,
+      );
       process.exit(1);
     }
-    cd(dir);
     await checkoutLanguages(languages);
   });
 
 program
   .command("checkout")
-  .description(
-    "Clone/checkout a new working copy, or add languages to an existing working copy",
-  )
+  .description("Clone/checkout a new working copy")
   .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
   .option(
     "--langs <languages>",
@@ -141,7 +137,7 @@ program
         ? opts.langs.split(",").map((x) => x.trim())
         : [];
       if (languages.length < 1) {
-        console.log(`Please specify more than one language`);
+        console.log(`Please specify one or more languages with --langs`);
         process.exit(1);
       }
       if (existsSync(dir)) {
@@ -197,6 +193,10 @@ program
       writeFileSync(path.join(".git", "info", "exclude"), `.svn/`);
       console.log(chalk.bold(`Creating initial Git commit...`));
       await $$`git add .; git commit -m before`;
+      console.log(`Checkout done.
+While at the root of the working copy:
+  Use ${chalk.yellow("k-kdesvn checkout-language <languages>")} to add more languages.
+  Use ${chalk.yellow("k-kdesvn update")} to do an svn update followed by adding the new changes into one local git commit.`);
     },
   );
 
