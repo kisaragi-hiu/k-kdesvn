@@ -78,7 +78,8 @@ async function checkoutLanguages(languages: string[]) {
     })
     .filter((x) => typeof x === "string");
   const invalidLanguages = [
-    ...new Set(languages).difference(new Set(teamnames)),
+    // "templates" is also a valid folder
+    ...new Set(languages).difference(new Set(["templates", ...teamnames])),
   ];
   if (invalidLanguages.length > 0) {
     console.log(
