@@ -96,10 +96,19 @@ program
       console.log(`Please specify one or more languages with --langs`);
       process.exit(1);
     }
+
+    const toplevelResult = await $({
+      nothrow: true,
+      quiet: true,
+    })`git rev-parse --show-toplevel`;
+    if (toplevelResult.exitCode !== 0) {
+      console.log(`The current directory is not in a Git repository.`);
+    }
+    const toplevel = toplevelResult.text().trim();
+    cd(toplevel);
+
     if (!existsSync(".svn")) {
-      console.log(
-        `The current directory is not the top level of an existing svn working copy.`,
-      );
+      console.log(`The current repository is not an svn working copy.`);
       process.exit(1);
     }
     await checkoutLanguages(languages);
