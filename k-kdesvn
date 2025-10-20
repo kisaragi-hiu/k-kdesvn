@@ -9,7 +9,25 @@ import * as process from "node:process";
 import path from "node:path";
 import { Console } from "node:console";
 
-import { $, chalk } from "npm:zx";
+// Fancy name for "every combination" that Shell exposes in the {a,b}{c,d}
+// wildcard syntax.
+import fastCartesian from "npm:fast-cartesian";
+import { $, chalk, cd, log as defaultLog } from "npm:zx";
+
+// zx configured to show command output but not the command line itself
+const $$ = $({
+  verbose: true,
+  log: (entry) => {
+    switch (entry.kind) {
+      case "cmd":
+        // noop
+        break;
+      default:
+        defaultLog(entry);
+    }
+  },
+});
+
 import { program, Option } from "npm:commander";
 
 // Force colors on even if we're piping to another program
@@ -45,8 +63,11 @@ program
     async (dir: string, opts: { readOnly?: boolean; force?: boolean }) => {
       if (existsSync(dir)) {
         if (opts.force) {
-          console.log(`Deleting ${dir} before cloning into it...`);
+          process.stdout.write(
+            chalk.bold(`Deleting ${dir} before cloning into it...`),
+          );
           rmSync(dir, { recursive: true, force: true });
+          process.stdout.write(chalk.bold(`done\n`));
         } else {
           console.log(`${dir} already exists`);
           process.exit(1);
