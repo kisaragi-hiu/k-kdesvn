@@ -35,7 +35,7 @@ export async function fetchLogEntries(opts?: {
     `k-gitsvn-${hash("md5", JSON.stringify({ dir: cwd(), ...opts }))}`,
     // the async is here to make it a promise
     () =>
-      runcmd()(
+      runcmd({ quiet: true })(
         "svn log --xml",
         ...(opts?.limit ? ["--limit", opts.limit] : []),
         ...(opts?.revision ? ["--revision", opts.revision] : []),
