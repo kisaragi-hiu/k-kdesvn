@@ -10,7 +10,7 @@ import {
   existsSync,
   rmSync,
 } from "node:fs";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import * as process from "node:process";
 import path from "node:path";
 import { Console } from "node:console";
@@ -18,14 +18,16 @@ import { Console } from "node:console";
 // Fancy name for "every combination" that Shell exposes in the {a,b}{c,d}
 // wildcard syntax.
 import fastCartesian from "npm:fast-cartesian";
-import { $, chalk, cd } from "npm:zx";
+import { Chalk } from "npm:chalk";
 
 import { program, Option } from "npm:@commander-js/extra-typings";
 
-// Force colors on even if we're piping to another program
-// The main program we're piping to is `less -R`. We just want paging for the
-// same output we'd get in the terminal normally.
-chalk.level = 3;
+const chalk = new Chalk({
+  // Force colors on even if we're piping to another program
+  // The main program we're piping to is `less -R`. We just want paging for the
+  // same output we'd get in the terminal normally.
+  level: 3,
+});
 
 import { link } from "npm:ansi-escapes";
 
@@ -37,6 +39,52 @@ import {
   ArgLogSort,
 } from "./utils.ts";
 
+/**
+ * Run `command` with `args`.
+ * `command` is space-separated, so args can be specified in there.
+ * Options:
+ * showcmd:
+ *   show the command and arguments
+ * quiet:
+ *   don't show the output in the terminal. This also enables reading the
+ *   output in the return value.
+ * shell:
+ *   Use the shell to run the command.
+ * nothrow:
+ *   Don't throw if the command returns a non-zero exit code.
+ */
+function runCmd(options?: {
+  nothrow?: boolean;
+  showcmd?: boolean;
+  quiet?: boolean;
+  shell?: boolean;
+  input?: string;
+}) {
+  return function (command: string, ...args: string[]) {
+    const splitCmd = command.split(" ");
+    const first = splitCmd[0];
+    if (!first) {
+      throw new Error("Command must not be empty");
+    }
+    const allArgs = [...splitCmd.slice(1), ...args];
+    if (options?.showcmd) {
+      if (allArgs.some((x) => x.includes(" ")))
+        console.warn("Some args have spaces and will not be displayed right");
+      console.log(`$ ${first} ${allArgs.join(" ")}`);
+    }
+    const result = spawnSync(first, allArgs, {
+      shell: options?.shell,
+      stdio: options?.quiet ? "pipe" : "inherit",
+      encoding: "utf-8",
+      input: options?.input,
+    });
+    if (result.status !== 0 && !options?.nothrow) {
+      throw new Error(`exit code: ${result.status}`);
+    }
+    return result;
+  };
+}
+
 program.description(`Commands for managing a local checkout of an svn repository with git.
 
 The Git repository is only here locally, and is used for local diff checking.`);
@@ -45,7 +93,7 @@ The Git repository is only here locally, and is used for local diff checking.`);
  * Check out `languages` for the current repository.
  * Assumes current directory is the top level of the svn working copy.
  */
-async function checkoutLanguages(languages: string[]) {
+function checkoutLanguages(languages: string[]) {
   // Valid team names. We read them here because they've only become
   // available here.
   const teamnames = readFileSync(`trunk/l10n-kf6/teamnames`, {
@@ -72,11 +120,14 @@ async function checkoutLanguages(languages: string[]) {
     process.exit(1);
   }
   console.log(`Setting up language paths...`);
-  await $({ verbose: true })`svn update --set-depth infinity ${fastCartesian([
-    ["trunk", "branches/stable"],
-    ["l10n-kf5", "l10n-kf6"],
-    languages,
-  ]).map((a) => a.join("/"))}`;
+  runCmd()(
+    "svn update --set-depth infinity",
+    ...fastCartesian([
+      ["trunk", "branches/stable"],
+      ["l10n-kf5", "l10n-kf6"],
+      languages,
+    ]).map((a) => a.join("/")),
+  );
 }
 
 program
@@ -86,28 +137,27 @@ program
     "<langs>",
     "Which languages to clone, as language codes. Comma-separated.",
   )
-  .action(async (langs: string) => {
+  .action((langs: string) => {
     const languages = langs.split(",").map((x) => x.trim());
     if (languages.length < 1) {
       console.log(`Please specify one or more languages with --langs`);
       process.exit(1);
     }
 
-    const toplevelResult = await $({
-      nothrow: true,
-      quiet: true,
-    })`git rev-parse --show-toplevel`;
-    if (toplevelResult.exitCode !== 0) {
+    const toplevelResult = runCmd({ quiet: true, nothrow: true })(
+      "git rev-parse --show-toplevel",
+    );
+    if (toplevelResult.status !== 0) {
       console.log(`The current directory is not in a Git repository.`);
     }
-    const toplevel = toplevelResult.text().trim();
-    cd(toplevel);
+    const toplevel = toplevelResult.stdout.trim();
+    process.chdir(toplevel);
 
     if (!existsSync(".svn")) {
       console.log(`The current repository is not an svn working copy.`);
       process.exit(1);
     }
-    await checkoutLanguages(languages);
+    checkoutLanguages(languages);
   });
 
 program
@@ -121,7 +171,7 @@ program
   .option("--read-only", "the --limit argument of svn log")
   .option("--force", "Clear `dir` if it already exists")
   .action(
-    async (
+    (
       dir: string,
       opts: { langs?: string; readOnly?: boolean; force?: boolean },
     ) => {
@@ -150,11 +200,9 @@ program
           ? `Checking out the read-only KDE subversion repository into ${dir}...`
           : `Checking out the read-write KDE subversion repository into ${dir}...`,
       );
-      const $$ = $({
-        verbose: true,
-      });
-      await $$`svn checkout ${repoUrl} --depth=empty ${dir}`;
-      cd(dir);
+      const $$ = runCmd({ showcmd: true });
+      $$("svn checkout --depth=empty", repoUrl, dir);
+      process.chdir(dir);
       // The goal:
       //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{templates,...}
       //   svn update --set-depth infinity trunk/l10n-kf{5,6}/{templates,...}
@@ -165,25 +213,27 @@ program
       // - Set depth to files, which has irrelevant files but is the least bad
       // So this is setting the directory.
       console.log(`Setting up parent paths...`);
-      await $$`svn update --set-depth files trunk`;
-      await $$`svn update --set-depth files branches`;
-      await $$`svn update --set-depth files branches/stable`;
-      // Doing the product in JS makes it easier to move away from shell in
-      // the future, and also makes it easier to pass in variables
-      await $$`svn update --set-depth files ${fastCartesian([
-        ["trunk", "branches/stable"],
-        ["l10n-kf5", "l10n-kf6"],
-      ]).map((a) => a.join("/"))}`;
+      $$("svn update --set-depth files trunk");
+      $$("svn update --set-depth files branches");
+      $$("svn update --set-depth files branches/stable");
+      $$(
+        "svn update --set-depth files",
+        // Doing the product in JS makes it to pass in variables
+        ...fastCartesian([
+          ["trunk", "branches/stable"],
+          ["l10n-kf5", "l10n-kf6"],
+        ]).map((a) => a.join("/")),
+      );
 
-      await checkoutLanguages(["templates", ...languages]);
+      checkoutLanguages(["templates", ...languages]);
 
       console.log(`Setting up the local Git repository...`);
-      await $$`git init`;
+      runCmd()("git init");
       console.log(`Excluding .svn from Git...`);
       mkdirSync(path.join(".git", "info"), { recursive: true });
       writeFileSync(path.join(".git", "info", "exclude"), `.svn/`);
       console.log(`Creating initial Git commit...`);
-      await $$`git add .; git commit -m before`;
+      runCmd()("git add .; git commit -m before");
       console.log(`Checkout done.
 While at the root of the working copy:
   Use ${chalk.yellow("k-kdesvn checkout-language <languages>")} to add more languages.
@@ -214,11 +264,10 @@ Assumes xclip is installed and working.
 program
   .command("pocount")
   .summary("Show stats of the current folder with pocount.")
-  .action(async () => {
-    await $({
-      verbose: true,
-      nothrow: true,
-    })`fd -L -e po -X pocount | grep TOTAL -A 8 | grep -v TOTAL`;
+  .action(() => {
+    runCmd({ shell: true, nothrow: true, showcmd: true })(
+      "fd -L -e po -X pocount | grep TOTAL -A 8 | grep -v TOTAL",
+    );
   });
 
 program
@@ -268,11 +317,10 @@ Example:
  * Assumes the repository is already set up, namely that .svn is already
  * excluded by Git.
  */
-async function cmdUpdate() {
-  await $({
-    verbose: true,
-    nothrow: true,
-  })`svn update; git add .; git commit -m before`;
+function cmdUpdate() {
+  runCmd({ shell: true, nothrow: true, showcmd: true })(
+    "svn update; git add .; git commit -m before",
+  );
 }
 
 /**
@@ -280,27 +328,26 @@ async function cmdUpdate() {
  * The plumbing from this to svn commit is not yet done. For now just, uh, run
  * the command yourself and paste it in.
  */
-async function cmdMsg() {
-  const message = (
-    await $`git show --format="%B" --no-patch HEAD`.text()
-  ).trim();
-  console.log(message);
+function cmdMsg() {
+  const message = runCmd({ quiet: true })(
+    "git show --format=%B --no-patch HEAD",
+  ).stdout.trim();
   // -l <n> specifies how many X requests before it exits. This is a quirk
   // with how the clipboard in X is by default a communication channel between
   // apps (copy source needs to be active to paste).
-  // -l 1 should allow eg. the KDE clipboard to take ownership of it and then
-  // for xclip to exit, but that for some reason doesn't work. -l 2 works. :shrug:
+  // Just, uh, try a few times. :shrug:
   // This is my own script, it doesn't have to be super reliable.
-  await $({
-    input: message + "\n",
-  })`xclip -silent -r -l 2 -selection clipboard`;
+  runCmd({ input: message + "\n" })(
+    "xclip -silent -r -l 5 -selection clipboard",
+  );
+  console.log("Copied!");
 }
 
-async function cmdCheck() {
-  await $({
-    verbose: true,
+function cmdCheck() {
+  runCmd({
+    showcmd: true,
     nothrow: true,
-  })`fd '\.po$' -x msgfmt -o /dev/null --check-format`;
+  })(`fd '\.po$' -x msgfmt -o /dev/null --check-format`);
 }
 
 async function cmdLog(opts?: {
