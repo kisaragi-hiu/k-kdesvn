@@ -15,6 +15,16 @@ import { spawnSync } from "node:child_process";
  *   Use the shell to run the command.
  * nothrow:
  *   Don't throw if the command returns a non-zero exit code.
+ *
+ * Examples:
+ * // throws on non-zero exit code by default
+ * // this looks like a command line but is actually just split on spaces
+ * // so the star is passed straight to find
+ * runcmd()("find . -name *.po")
+ * // pass shell = true to use shell
+ * runcmd({ shell: true })("echo hello | sed 's/l/k/g;s/o/i'")
+ * // use quiet = true to see output in js
+ * const result = runcmd({ nothrow: true, quiet: true })("echo hello")
  */
 export function runcmd(options?: {
   nothrow?: boolean;
