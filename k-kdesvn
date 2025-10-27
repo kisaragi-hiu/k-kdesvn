@@ -303,7 +303,7 @@ function cmdCheck() {
   runcmd({
     showcmd: true,
     nothrow: true,
-  })(`fd '\.po$' -x msgfmt -o /dev/null --check-format`);
+  })(`fd -e po -x msgfmt -o /dev/null --check-format`);
 }
 
 async function cmdLog(opts?: {
