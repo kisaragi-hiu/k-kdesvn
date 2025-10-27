@@ -183,12 +183,13 @@ program
       checkoutLanguages(["templates", ...languages]);
 
       console.log(`Setting up the local Git repository...`);
-      runcmd()("git init");
+      $$("git init");
       console.log(`Excluding .svn from Git...`);
       mkdirSync(path.join(".git", "info"), { recursive: true });
       writeFileSync(path.join(".git", "info", "exclude"), `.svn/`);
       console.log(`Creating initial Git commit...`);
-      runcmd()("git add .; git commit -m before");
+      $$("git add .");
+      $$("git commit -m before");
       console.log(`Checkout done.
 While at the root of the working copy:
   Use ${chalk.yellow("k-kdesvn checkout-language <languages>")} to add more languages.
