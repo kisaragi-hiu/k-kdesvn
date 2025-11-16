@@ -384,7 +384,7 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
         `https://websvn.kde.org/?view=revision&revision=${revision}`,
       )} ${chalk.grey("|")} ${
         unhighlightedSet.has(entry.author)
-          ? entry.author
+          ? chalk.grey(entry.author)
           : chalk.yellow(entry.author)
       } ${chalk.grey("|")} ${formatISO(moment)}`,
     );
