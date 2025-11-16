@@ -344,7 +344,7 @@ async function cmdLog(opts?: {
   // Specify defaults in one place.
   const sort = ArgLogSort.parse(opts?.sort ?? "new-first");
   const msgFormat = ArgLogMsgFormat.parse(opts?.msgFormat ?? "full");
-  const sep = "-".repeat(72);
+  const sep = chalk.grey("-".repeat(72));
   const excludeSet = new Set(parseCommaSeparated(opts?.exclude, ["scripty"]));
   const onlySet = new Set(parseCommaSeparated(opts?.only, []));
   const unhighlightedSet = new Set(
@@ -382,14 +382,23 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
       `r${link(
         revision,
         `https://websvn.kde.org/?view=revision&revision=${revision}`,
-      )} | ${
+      )} ${chalk.grey("|")} ${
         unhighlightedSet.has(entry.author)
           ? entry.author
           : chalk.yellow(entry.author)
-      } | ${formatISO(moment)}`,
+      } ${chalk.grey("|")} ${formatISO(moment)}`,
     );
     if (msgFormat === "full") {
-      consol.log(entry.msg);
+      // highlight first line in bold
+      const newlinePos = entry.msg.indexOf("\n");
+      if (newlinePos === -1) {
+        consol.log(chalk.bold(entry.msg));
+      } else {
+        consol.log(
+          chalk.bold(entry.msg.substring(0, newlinePos)) +
+            entry.msg.substring(newlinePos),
+        );
+      }
     } else if (msgFormat === "one-line") {
       const newlinePos = entry.msg.indexOf("\n");
       if (newlinePos === -1) {
