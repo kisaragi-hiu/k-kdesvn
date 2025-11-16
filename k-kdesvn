@@ -247,6 +247,10 @@ Example:
     'Exclude a different set of authors. Defaults to ["scripty"].',
   )
   .option(
+    "--only <authors...>",
+    "Show only revisions from these authors. Has higher priority than --exclude.",
+  )
+  .option(
     "--unhighlighted <authors...>",
     'Highlight everyone except these. Defaults to ["moonlight"].',
   )
@@ -314,6 +318,8 @@ async function cmdLog(opts?: {
   since?: string;
   /** Exclude these authors. Comma-separated but can also be an array. Defaults to "scripty". */
   exclude?: string[];
+  /** Show only these authors. Higher priority than exclude. Comma-separated but can also be an array. Defaults to "scripty". */
+  only?: string[];
   /** Highlight all authors except these. Comma-separated but can also be an array. Defaults to "moonlight". */
   unhighlighted?: string[];
   /** How to sort log entries. Undefined means return whatever svn log returns. */
@@ -340,6 +346,7 @@ async function cmdLog(opts?: {
   const msgFormat = ArgLogMsgFormat.parse(opts?.msgFormat ?? "full");
   const sep = "-".repeat(72);
   const excludeSet = new Set(parseCommaSeparated(opts?.exclude, ["scripty"]));
+  const onlySet = new Set(parseCommaSeparated(opts?.only, []));
   const unhighlightedSet = new Set(
     parseCommaSeparated(opts?.unhighlighted, ["moonlight"]),
   );
@@ -349,6 +356,7 @@ async function cmdLog(opts?: {
 --revision: ${revision ?? "unspecified"}
 Sort: ${sort ?? "unspecified"}
 Excluded authors: ${[...excludeSet].join(", ")}
+"Only" authors: ${[...onlySet].join(", ")}
 Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
 `);
 
@@ -361,7 +369,12 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
 
   for (const entry of logentries) {
     authors.set(entry.author, (authors.get(entry.author) || 0) + 1);
-    if (excludeSet.has(entry.author)) continue;
+    // When --only is specified, exclude everyone not on that list
+    if (onlySet.size !== 0 && !onlySet.has(entry.author)) continue;
+    // excluded and not in the only list -> skip the entry
+    // excluded but in the only list -> keep the entry
+    // because we want --only to have higher priority
+    if (excludeSet.has(entry.author) && !onlySet.has(entry.author)) continue;
     const moment = entry.date;
     consol.log(sep);
     const revision = entry["@_revision"];
