@@ -327,10 +327,11 @@ async function cmdLog(opts?: {
   /** How to show commit messages. */
   msgFormat?: string;
 }) {
-  const subprocess = spawn("/usr/bin/less", ["-R"], {
-    stdio: ["pipe", "inherit", "inherit"],
-  });
-  const stream = process.stdout.isTTY ? subprocess.stdin : process.stdout;
+  const stream = process.stdout.isTTY
+    ? spawn("/usr/bin/less", ["-R"], {
+        stdio: ["pipe", "inherit", "inherit"],
+      }).stdin
+    : process.stdout;
   const revision = opts?.since && `{${opts.since}}:HEAD`;
   // When --since is provided, --limit should act like no limit by default
   // but when --since is not provided, --limit should have a default of 100
@@ -417,7 +418,10 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
       2,
     ),
   );
-  subprocess.stdin.end();
+  stream.write(`\n`);
+  if (stream !== process.stdout) {
+    stream.end();
+  }
 }
 
 // Ignore top level errors
