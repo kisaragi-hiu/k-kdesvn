@@ -330,17 +330,7 @@ async function cmdLog(opts?: {
   const subprocess = spawn("/usr/bin/less", ["-R"], {
     stdio: ["pipe", "inherit", "inherit"],
   });
-  // I would use
-  //   const stream = process.stdout.isTTY ? subprocess.stdin : process.stdout;
-  // but Deno reports stream.write() as an error in that case for some reason.
-  // Also, console.log accepts all kinds of objects, which is convenient.
-  const consol = process.stdout.isTTY
-    ? new Console({
-        stdout: subprocess.stdin,
-        stderr: process.stdout,
-        colorMode: true,
-      })
-    : console;
+  const stream = process.stdout.isTTY ? subprocess.stdin : process.stdout;
   const revision = opts?.since && `{${opts.since}}:HEAD`;
   // When --since is provided, --limit should act like no limit by default
   // but when --since is not provided, --limit should have a default of 100
@@ -356,15 +346,17 @@ async function cmdLog(opts?: {
   );
   const authors = new Map<string, number>();
 
-  consol.log(`--limit: ${limit ?? "unspecified"}
+  stream.write(
+    `--limit: ${limit ?? "unspecified"}
 --revision: ${revision ?? "unspecified"}
 Sort: ${sort ?? "unspecified"}
 Excluded authors: ${[...excludeSet].join(", ")}
 "Only" authors: ${[...onlySet].join(", ")}
 Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
-`);
+` + "\n",
+  );
 
-  consol.error("Fetching log messages from remote...");
+  console.error("Fetching log messages from remote...");
   const logentries = await fetchLogEntries({
     limit,
     revision,
@@ -380,9 +372,10 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
     // because we want --only to have higher priority
     if (excludeSet.has(entry.author) && !onlySet.has(entry.author)) continue;
     const moment = entry.date;
-    consol.log(sep);
+    stream.write(sep);
+    stream.write("\n");
     const revision = entry["@_revision"];
-    consol.log(
+    stream.write(
       `r${link(
         revision,
         `https://websvn.kde.org/?view=revision&revision=${revision}`,
@@ -392,31 +385,37 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
           : chalk.yellow(entry.author)
       } ${chalk.grey("|")} ${formatISO(moment)}`,
     );
+    stream.write("\n");
     if (msgFormat === "full") {
       // highlight first line in bold
       const newlinePos = entry.msg.indexOf("\n");
       if (newlinePos === -1) {
-        consol.log(chalk.bold(entry.msg));
+        stream.write(chalk.bold(entry.msg) + "\n");
       } else {
-        consol.log(
-          chalk.bold(entry.msg.substring(0, newlinePos)) +
-            entry.msg.substring(newlinePos),
-        );
+        stream.write(chalk.bold(entry.msg.substring(0, newlinePos)));
+        stream.write(entry.msg.substring(newlinePos));
+        stream.write("\n");
       }
     } else if (msgFormat === "one-line") {
       const newlinePos = entry.msg.indexOf("\n");
       if (newlinePos === -1) {
-        consol.log(entry.msg);
+        stream.write(entry.msg);
+        stream.write("\n");
       } else {
-        consol.log(entry.msg.substring(0, newlinePos));
+        stream.write(entry.msg.substring(0, newlinePos));
+        stream.write("\n");
       }
     }
   }
-  consol.log(sep);
-  consol.log(`
-Stats:`);
-  consol.log(
-    Object.fromEntries([...authors].sort((a, b) => (a[1] < b[1] ? 1 : -1))),
+  stream.write(sep);
+  stream.write("\n\n");
+  stream.write(`Stats:\n`);
+  stream.write(
+    JSON.stringify(
+      Object.fromEntries([...authors].sort((a, b) => (a[1] < b[1] ? 1 : -1))),
+      null,
+      2,
+    ),
   );
   subprocess.stdin.end();
 }
