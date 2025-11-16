@@ -335,7 +335,11 @@ async function cmdLog(opts?: {
   // but Deno reports stream.write() as an error in that case for some reason.
   // Also, console.log accepts all kinds of objects, which is convenient.
   const consol = process.stdout.isTTY
-    ? new Console({ stdout: subprocess.stdin, colorMode: true })
+    ? new Console({
+        stdout: subprocess.stdin,
+        stderr: process.stdout,
+        colorMode: true,
+      })
     : console;
   const revision = opts?.since && `{${opts.since}}:HEAD`;
   // When --since is provided, --limit should act like no limit by default
