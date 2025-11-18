@@ -63,8 +63,7 @@ function checkoutLanguages(languages: string[]) {
     })
     .filter((x) => typeof x === "string");
   const invalidLanguages = [
-    // "templates" is also a valid folder
-    ...new Set(languages).difference(new Set(["templates", ...teamnames])),
+    ...new Set(languages).difference(new Set(...teamnames)),
   ];
   if (invalidLanguages.length > 0) {
     console.log(
@@ -159,8 +158,8 @@ program
       $$("svn checkout --depth=empty", repoUrl, dir);
       process.chdir(dir);
       // The goal:
-      //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{templates,...}
-      //   svn update --set-depth infinity trunk/l10n-kf{5,6}/{templates,...}
+      //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{...}
+      //   svn update --set-depth infinity trunk/l10n-kf{5,6}/{...}
       // but each parent directory needs to be a working copy, ie. checked out.
       // To checkout each parent directory, there are only 3 options:
       // - Set depth to infinity, which is too much
@@ -180,7 +179,7 @@ program
         ]).map((a) => a.join("/")),
       );
 
-      checkoutLanguages(["templates", ...languages]);
+      checkoutLanguages([...languages]);
 
       console.log(`Setting up the local Git repository...`);
       $$("git init");
