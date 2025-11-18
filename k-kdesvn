@@ -423,9 +423,11 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
     stream.write("\n");
     const revision = entry["@_revision"];
     stream.write(
-      `r${link(
-        revision,
-        `https://websvn.kde.org/?view=revision&revision=${revision}`,
+      `r${chalk.blue(
+        link(
+          revision,
+          `https://websvn.kde.org/?view=revision&revision=${revision}`,
+        ),
       )} ${chalk.grey("|")} ${
         unhighlightedSet.has(entry.author)
           ? chalk.grey(entry.author)
