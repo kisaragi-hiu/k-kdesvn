@@ -13,7 +13,6 @@ import {
 import { spawn } from "node:child_process";
 import * as process from "node:process";
 import path from "node:path";
-import { Console } from "node:console";
 
 // Fancy name for "every combination" that Shell exposes in the {a,b}{c,d}
 // wildcard syntax.
