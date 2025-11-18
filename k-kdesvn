@@ -84,6 +84,54 @@ function checkoutLanguages(languages: string[]) {
 }
 
 program
+  .command("setup-lokalize")
+  .description('Set up a "workspace" for Lokalize')
+  .argument("<dir>", "Where to set it up in")
+  .action((dir: string) => {
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    console.log(
+      `Not yet implemented. Just make sure things are laid out like this undir <dir>:
+
+<lang>/{kf5,kf6}:
+  Trunk translations for the language
+    symlinks to ~/kde-svn/branches/stable/l10n-{kf5,kf6}/<lang>
+
+stable.<lang>/{kf5,kf6}:
+  Stable translations for the language;
+    symlinks to ~/kde-svn/trunk/l10n-{kf5,kf6}/<lang>
+
+l10n-templates:
+  A checkout of https://invent.kde.org/localization/l10n-templates
+
+templates/{kf5,kf6}:
+  Trunk templates, symlinks to l10n-templates/{trunk5,trunk6}
+
+stable.templates/{kf5,kf6}:
+  Stable templates, symlinks to l10n-templates/{stable5,stable6}
+
+<lang>/index.lokalize:
+  [General]
+  AltDir=../<reference language>
+  BranchDir=../stable.<lang>
+  LangCode=<lang>
+  LanguageSource=Project
+  PotBaseDir=../templates
+  PotBranchDir=../stable.templates
+  # Like "zh-l10n@lists.slat.org"
+  MailingList=...
+  # Like "Traditional Chinese <zh-l10n@lists.slat.org>"
+  ProjLangTeam=...
+  ProjectID=kde-translation-<lang>
+  TargetLangCode=<lang>
+  [RegExps]
+  Markup=(<[^>]+>)+|(&[A-Za-z_:][A-Za-z0-9_\\\\.:-]*;|%[0-9n])+
+`,
+    );
+  });
+
+program
   .command("checkout-language")
   .description("Add languages to the current working copy.")
   .argument(
