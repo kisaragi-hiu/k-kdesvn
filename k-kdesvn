@@ -296,10 +296,7 @@ Example:
     "--only <authors...>",
     "Show only revisions from these authors. Has higher priority than --exclude.",
   )
-  .option(
-    "--unhighlighted <authors...>",
-    'Highlight everyone except these. Defaults to ["moonlight"].',
-  )
+  .option("--highlight <authors...>", "Highlight these authors.")
   .addOption(
     new Option(
       `--msg-format <${ArgLogMsgFormat.options.join("|")}>`,
@@ -366,8 +363,8 @@ async function cmdLog(opts?: {
   exclude?: string[];
   /** Show only these authors. Higher priority than exclude. Comma-separated but can also be an array. Defaults to "scripty". */
   only?: string[];
-  /** Highlight all authors except these. Comma-separated but can also be an array. Defaults to "moonlight". */
-  unhighlighted?: string[];
+  /** Highlight these authors. Comma-separated but can also be an array. Defaults to highlighting no one. */
+  highlight?: string[];
   /** How to sort log entries. Undefined means return whatever svn log returns. */
   sort?: string;
   /** How to show commit messages. */
@@ -388,9 +385,7 @@ async function cmdLog(opts?: {
   const sep = chalk.grey("-".repeat(72));
   const excludeSet = new Set(parseCommaSeparated(opts?.exclude, ["scripty"]));
   const onlySet = new Set(parseCommaSeparated(opts?.only, []));
-  const unhighlightedSet = new Set(
-    parseCommaSeparated(opts?.unhighlighted, ["moonlight"]),
-  );
+  const highlightedSet = new Set(parseCommaSeparated(opts?.highlight, []));
   const authors = new Map<string, number>();
 
   stream.write(
@@ -399,7 +394,7 @@ async function cmdLog(opts?: {
 Sort: ${sort ?? "unspecified"}
 Excluded authors: ${[...excludeSet].join(", ")}
 "Only" authors: ${[...onlySet].join(", ")}
-Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
+Highlighted authors: ${[...highlightedSet].join(", ")}
 ` + "\n",
   );
 
@@ -429,8 +424,8 @@ Unhighlighted authors: ${[...unhighlightedSet].join(", ")}
           `https://websvn.kde.org/?view=revision&revision=${revision}`,
         ),
       )} ${chalk.grey("|")} ${
-        unhighlightedSet.has(entry.author)
-          ? chalk.grey(entry.author)
+        highlightedSet.has(entry.author)
+          ? chalk.yellow.bold(entry.author)
           : chalk.yellow(entry.author)
       } ${chalk.grey("|")} ${formatISO(moment)}`,
     );
