@@ -325,7 +325,7 @@ Example:
  */
 function cmdUpdate() {
   runcmd({ shell: true, nothrow: true, showcmd: true })(
-    "svn update; git add .; git commit -m before",
+    "svn update && git add . && git commit -m before",
   );
 }
 
