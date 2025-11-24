@@ -8,7 +8,7 @@ import {
   writeFileSync,
   readFileSync,
   existsSync,
-  rmSync,
+  symlinkSync,
 } from "node:fs";
 import { spawn } from "node:child_process";
 import * as process from "node:process";
@@ -83,165 +83,211 @@ function checkoutLanguages(languages: string[]) {
   );
 }
 
-program
-  .command("setup-lokalize")
-  .description('Set up a "workspace" for Lokalize')
-  .argument("<dir>", "Where to set it up in")
-  .action((dir: string) => {
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+/**
+ * Checkout the KDE SVN repository to `dir` then set it up.
+ * `readonly`: whether to clone from the readonly repo or not
+ * `languages`: set the repository up for these languages
+ * HACK: this will leave process.chdir within `dir`.
+ */
+function setupSvnCheckout(
+  dir: string,
+  readonly: boolean | undefined,
+  languages: string[],
+) {
+  const repoUrl = readonly
+    ? "svn://anonsvn.kde.org/home/kde/"
+    : "svn+ssh://svn@svn.kde.org/home/kde/";
+  console.log(
+    readonly
+      ? `Checking out the read-only KDE subversion repository into ${dir}...`
+      : `Checking out the read-write KDE subversion repository into ${dir}...`,
+  );
+  const $$ = runcmd({ showcmd: true });
+  $$("svn checkout --depth=empty", repoUrl, dir);
+  process.chdir(dir);
+  // The goal:
+  //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{...}
+  //   svn update --set-depth infinity trunk/l10n-kf{5,6}/{...}
+  // but each parent directory needs to be a working copy, ie. checked out.
+  // To checkout each parent directory, there are only 3 options:
+  // - Set depth to infinity, which is too much
+  // - Set depth to immediates, which includes irrelevant folders and files
+  // - Set depth to files, which has irrelevant files but is the least bad
+  // So this is setting the directory.
+  console.log(`Setting up parent paths...`);
+  $$("svn update --set-depth files trunk");
+  $$("svn update --set-depth files branches");
+  $$("svn update --set-depth files branches/stable");
+  $$(
+    "svn update --set-depth files",
+    // Doing the product in JS makes it to pass in variables
+    ...fastCartesian([
+      ["trunk", "branches/stable"],
+      ["l10n-kf5", "l10n-kf6"],
+    ]).map((a) => a.join("/")),
+  );
+
+  checkoutLanguages([...languages]);
+
+  console.log(`Setting up the local Git repository...`);
+  $$("git init");
+  console.log(`Excluding .svn from Git...`);
+  mkdirSync(path.join(".git", "info"), { recursive: true });
+  writeFileSync(path.join(".git", "info", "exclude"), `.svn/`);
+  console.log(`Creating initial Git commit...`);
+  $$("git add .");
+  $$("git commit -m before");
+}
+
+/**
+ * Create the Lokalize project file for `lang`.
+ * Assumes we are in the main dir.
+ */
+function initLokalizeProject(lang?: string, reference?: string) {
+  function promptLoop(message: string) {
+    while (true) {
+      const answer = prompt(message);
+      if (typeof answer === "string") return answer;
+      console.log("Please provide an answer");
     }
-    console.log(
-      `Not yet implemented. Just make sure things are laid out like this undir <dir>:
+  }
+  const targetLang =
+    lang ?? promptLoop("Primary language (for Lokalize project):");
+  const referenceLang =
+    reference ?? promptLoop("Reference language (for Lokalize project):");
 
-<lang>/{kf5,kf6}:
-  Trunk translations for the language
-    symlinks to ~/kde-svn/branches/stable/l10n-{kf5,kf6}/<lang>
+  const mailingList =
+    targetLang === "zh_TW" ? "zh-l10n@lists.slat.org" : "Please fill this in";
+  const languageName =
+    targetLang === "zh_TW" ? "Traditional Chinese" : "Please fill this in";
 
-stable.<lang>/{kf5,kf6}:
-  Stable translations for the language;
-    symlinks to ~/kde-svn/trunk/l10n-{kf5,kf6}/<lang>
+  const trunkAlt = referenceLang;
+  const stableAlt = `stable.${referenceLang}`;
+  const trunkTarget = targetLang;
+  const stableTarget = `stable.${targetLang}`;
 
-l10n-templates:
-  A checkout of https://invent.kde.org/localization/l10n-templates
-
-templates/{kf5,kf6}:
-  Trunk templates, symlinks to l10n-templates/{trunk5,trunk6}
-
-stable.templates/{kf5,kf6}:
-  Stable templates, symlinks to l10n-templates/{stable5,stable6}
-
-<lang>/index.lokalize:
-  [General]
-  AltDir=../<reference language>
-  BranchDir=../stable.<lang>
-  LangCode=<lang>
-  LanguageSource=Project
-  PotBaseDir=../templates
-  PotBranchDir=../stable.templates
-  # Like "zh-l10n@lists.slat.org"
-  MailingList=...
-  # Like "Traditional Chinese <zh-l10n@lists.slat.org>"
-  ProjLangTeam=...
-  ProjectID=kde-translation-<lang>
-  TargetLangCode=<lang>
-  [RegExps]
-  Markup=(<[^>]+>)+|(&[A-Za-z_:][A-Za-z0-9_\\\\.:-]*;|%[0-9n])+
-`,
-    );
-  });
+  writeFileSync(
+    path.join(trunkTarget, "index.lokalize"),
+    `
+[General]
+AltDir=../${trunkAlt}
+BranchDir=../${stableTarget}
+LangCode=${targetLang}
+LanguageSource=Project
+PotBaseDir=../templates
+PotBranchDir=../stable.templates
+MailingList=${mailingList}
+ProjLangTeam=${languageName} <${mailingList}>
+ProjectID=kde-translation-${targetLang}
+TargetLangCode=${targetLang}
+[RegExps]
+Markup=(<[^>]+>)+|(&[A-Za-z_:][A-Za-z0-9_\\\\.:-]*;|%[0-9n])+
+`.trim(),
+  );
+  writeFileSync(
+    path.join(stableTarget, "index.lokalize"),
+    `
+[General]
+AltDir=../${stableAlt}
+BranchDir=../${trunkTarget}
+LangCode=${targetLang}
+LanguageSource=Project
+PotBaseDir=../stable.templates
+PotBranchDir=../templates
+MailingList=${mailingList}
+ProjLangTeam=${languageName} <${mailingList}>
+ProjectID=kde-translation-${targetLang}
+TargetLangCode=${targetLang}
+[RegExps]
+Markup=(<[^>]+>)+|(&[A-Za-z_:][A-Za-z0-9_\\\\.:-]*;|%[0-9n])+
+`.trim(),
+  );
+}
 
 program
-  .command("checkout-language")
-  .description("Add languages to the current working copy.")
+  .command("init")
+  .description("Initialize a translation workspace")
   .argument(
-    "<langs>",
-    "Which languages to clone, as language codes. Comma-separated.",
+    "[dir]",
+    "Where to clone to, defaults to 'kde-translations'",
+    "kde-translations",
   )
-  .action((langs: string) => {
-    const languages = langs.split(",").map((x) => x.trim());
-    if (languages.length < 1) {
-      console.log(`Please specify one or more languages`);
-      process.exit(1);
-    }
-
-    const toplevelResult = runcmd({ quiet: true, nothrow: true })(
-      "git rev-parse --show-toplevel",
-    );
-    if (toplevelResult.status !== 0) {
-      console.log(`The current directory is not in a Git repository.`);
-    }
-    const toplevel = toplevelResult.stdout.trim();
-    process.chdir(toplevel);
-
-    if (!existsSync(".svn")) {
-      console.log(`The current repository is not an svn working copy.`);
-      process.exit(1);
-    }
-    checkoutLanguages(languages);
-  });
-
-program
-  .command("clone")
-  .description("Clone/checkout a new working copy")
-  .argument("[dir]", "Where to clone to, defaults to 'kde-svn'", "kde-svn")
   .option(
     "--langs <languages>",
     "Which languages to clone, as language codes. Comma-separated.",
   )
   .option("--read-only", "the --limit argument of svn log")
-  .option("--force", "Clear `dir` if it already exists")
-  .action(
-    (
-      dir: string,
-      opts: { langs?: string; readOnly?: boolean; force?: boolean },
-    ) => {
-      const languages = opts?.langs
-        ? opts.langs.split(",").map((x) => x.trim())
-        : [];
-      if (languages.length < 1) {
-        console.log(`Please specify one or more languages with --langs`);
-        process.exit(1);
-      }
-      if (existsSync(dir)) {
-        if (opts.force) {
-          process.stdout.write(`Deleting ${dir} before cloning into it...`);
-          rmSync(dir, { recursive: true, force: true });
-          process.stdout.write(`done\n`);
-        } else {
-          console.log(`${dir} already exists.`);
-          process.exit(1);
+  .action((dir: string, opts: { langs?: string; readOnly?: boolean }) => {
+    const languages = opts?.langs
+      ? opts.langs.split(",").map((x) => x.trim())
+      : [];
+    if (languages.length < 1) {
+      console.log(`Please specify one or more languages with --langs`);
+      process.exit(1);
+    }
+    if (existsSync(dir)) {
+      console.log(`${dir} already exists.`);
+      process.exit(1);
+    }
+    // kde-translations/svn
+    setupSvnCheckout(path.join(dir, "svn"), opts.readOnly, languages);
+    // kde-translations/l10n-templates
+    process.chdir(dir);
+    const $$ = runcmd({ showcmd: true });
+    $$(
+      "git clone --depth 1 https://invent.kde.org/localization/l10n-templates",
+    );
+
+    console.log("Creating Lokalize project structure...");
+    // kde-translations/{"","stable."}<lang>/{kf5,kf6}
+    // We do {"","stable."}/<lang>/{kf5,kf6} because Lokalize finds files based
+    // on the directory hierarchy, and we want to see kf5 and kf6 at once, but
+    // we don't want to see trunk and stable at once. Trunk and stable should
+    // instead be managed by opening one of them at a time, then using
+    // alternative translations to automatically synchronize them over.
+    for (const lang of languages) {
+      for (const prefix of ["", "stable."]) {
+        const variant = `${prefix}${lang}`;
+        mkdirSync(variant);
+        for (const branch of ["kf5", "kf6"]) {
+          symlinkSync(
+            // this is what's written into the symlink, so it's relative to the
+            // symlink itself
+            path.join("..", "svn", "trunk", `l10n-${branch}`, lang),
+            path.join(variant, branch),
+          );
         }
       }
-      const repoUrl = opts.readOnly
-        ? "svn://anonsvn.kde.org/home/kde/"
-        : "svn+ssh://svn@svn.kde.org/home/kde/";
-      console.log(
-        opts.readOnly
-          ? `Checking out the read-only KDE subversion repository into ${dir}...`
-          : `Checking out the read-write KDE subversion repository into ${dir}...`,
-      );
-      const $$ = runcmd({ showcmd: true });
-      $$("svn checkout --depth=empty", repoUrl, dir);
-      process.chdir(dir);
-      // The goal:
-      //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{...}
-      //   svn update --set-depth infinity trunk/l10n-kf{5,6}/{...}
-      // but each parent directory needs to be a working copy, ie. checked out.
-      // To checkout each parent directory, there are only 3 options:
-      // - Set depth to infinity, which is too much
-      // - Set depth to immediates, which includes irrelevant folders and files
-      // - Set depth to files, which has irrelevant files but is the least bad
-      // So this is setting the directory.
-      console.log(`Setting up parent paths...`);
-      $$("svn update --set-depth files trunk");
-      $$("svn update --set-depth files branches");
-      $$("svn update --set-depth files branches/stable");
-      $$(
-        "svn update --set-depth files",
-        // Doing the product in JS makes it to pass in variables
-        ...fastCartesian([
-          ["trunk", "branches/stable"],
-          ["l10n-kf5", "l10n-kf6"],
-        ]).map((a) => a.join("/")),
-      );
+    }
 
-      checkoutLanguages([...languages]);
+    // kde-translations/{"","stable."}templates/{kf5,kf6}
+    mkdirSync("stable.templates");
+    symlinkSync(
+      path.join("..", "l10n-templates", "stable5"),
+      path.join("stable.templates", "kf5"),
+    );
+    symlinkSync(
+      path.join("..", "l10n-templates", "stable6"),
+      path.join("stable.templates", "kf6"),
+    );
+    mkdirSync("templates");
+    symlinkSync(
+      path.join("..", "l10n-templates", "trunk5"),
+      path.join("templates", "kf5"),
+    );
+    symlinkSync(
+      path.join("..", "l10n-templates", "trunk6"),
+      path.join("templates", "kf6"),
+    );
 
-      console.log(`Setting up the local Git repository...`);
-      $$("git init");
-      console.log(`Excluding .svn from Git...`);
-      mkdirSync(path.join(".git", "info"), { recursive: true });
-      writeFileSync(path.join(".git", "info", "exclude"), `.svn/`);
-      console.log(`Creating initial Git commit...`);
-      $$("git add .");
-      $$("git commit -m before");
-      console.log(`Checkout done.
-While at the root of the working copy:
-  Use ${chalk.yellow("k-kdesvn checkout-language <languages>")} to add more languages.
-  Use ${chalk.yellow("k-kdesvn update")} to do an svn update followed by adding the new changes into one local git commit.`);
-    },
-  );
+    initLokalizeProject();
+
+    console.log(`Checkout done.
+The Lokalize project can be seen in ${dir}/<language>/index.lokalize.
+The filled-in metadata most likely needs updating.
+
+Use ${chalk.yellow("k-kdesvn update")} at ${dir}/svn to do an svn update followed by adding the new changes into one local git commit.`);
+  });
 
 program
   .command("check")
