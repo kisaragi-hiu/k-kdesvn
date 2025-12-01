@@ -1,9 +1,9 @@
 import { hash } from "node:crypto";
 import { cwd } from "node:process";
 
-import * as z from "npm:zod";
-import { XMLParser } from "npm:fast-xml-parser";
-import { cached } from "npm:@kisaragi-hiu/cached-fetch";
+import * as z from "npm:zod@4.1.11";
+import { XMLParser } from "npm:fast-xml-parser@5.2.5";
+import { cached } from "npm:@kisaragi-hiu/cached-fetch@0.2.0";
 
 import { runcmd } from "./runcmd.ts";
 

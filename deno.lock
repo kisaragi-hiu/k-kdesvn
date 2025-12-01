@@ -1,37 +1,30 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@commander-js/extra-typings@*": "14.0.0_commander@14.0.1",
-    "npm:@kisaragi-hiu/cached-fetch@*": "0.2.0",
+    "npm:@commander-js/extra-typings@14.0.0": "14.0.0_commander@14.0.1",
+    "npm:@kisaragi-hiu/cached-fetch@0.2.0": "0.2.0",
     "npm:@types/node@*": "24.2.0",
-    "npm:ansi-escapes@*": "7.1.1",
-    "npm:chalk@*": "5.6.2",
-    "npm:commander@*": "14.0.1",
-    "npm:fast-cartesian@*": "9.0.1",
-    "npm:fast-xml-parser@*": "5.2.5",
-    "npm:zod@*": "4.1.11"
+    "npm:ansi-escapes@7.1.1": "7.1.1",
+    "npm:chalk@5.6.2": "5.6.2",
+    "npm:fast-cartesian@9.0.1": "9.0.1",
+    "npm:fast-xml-parser@5.2.5": "5.2.5",
+    "npm:zod@4.1.11": "4.1.11"
   },
   "npm": {
     "@commander-js/extra-typings@14.0.0_commander@14.0.1": {
       "integrity": "sha512-hIn0ncNaJRLkZrxBIp5AsW/eXEHNKYQBh0aPdoUqNgD+Io3NIykQqpKFyKcuasZhicGaEZJX/JBSIkZ4e5x8Dg==",
-      "dependencies": [
-        "commander"
-      ]
+      "dependencies": ["commander"]
     },
     "@kisaragi-hiu/cached-fetch@0.2.0": {
       "integrity": "sha512-8cA8ODJM5Jm6K68uxKwmlE0bCAeTWbMmffU7MWyeKoF+0n7P7qZOjXGXuspsTNSfK1PdJBR/FjPrPp/u8xVVvw=="
     },
     "@types/node@24.2.0": {
       "integrity": "sha512-3xyG3pMCq3oYCNg7/ZP+E1ooTaGB4cG8JWRsqqOYQdbWNY4zbaV0Ennrd7stjiJEFZCaybcIgpTjJWHRfBSIDw==",
-      "dependencies": [
-        "undici-types"
-      ]
+      "dependencies": ["undici-types"]
     },
     "ansi-escapes@7.1.1": {
       "integrity": "sha512-Zhl0ErHcSRUaVfGUeUdDuLgpkEo8KIFjB4Y9uAc46ScOpdDiU1Dbyplh7qWJeJ/ZHpbyMSM26+X3BySgnIz40Q==",
-      "dependencies": [
-        "environment"
-      ]
+      "dependencies": ["environment"]
     },
     "chalk@5.6.2": {
       "integrity": "sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA=="
@@ -47,9 +40,7 @@
     },
     "fast-xml-parser@5.2.5": {
       "integrity": "sha512-pfX9uG9Ki0yekDHx2SiuRIyFdyAr1kMIMitPvb0YBo8SUfKvia7w7FIyd/l6av85pFYRhZscS75MwMnbvY+hcQ==",
-      "dependencies": [
-        "strnum"
-      ],
+      "dependencies": ["strnum"],
       "bin": true
     },
     "strnum@2.1.1": {
