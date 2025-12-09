@@ -74,7 +74,7 @@ function checkoutLanguages(languages: string[]) {
   }
   console.log(`Setting up language paths...`);
   runcmd()(
-    "svn update --set-depth infinity",
+    "svn update --quiet --set-depth infinity",
     ...fastCartesian([
       ["trunk", "branches/stable"],
       ["l10n-kf5", "l10n-kf6"],
