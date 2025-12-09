@@ -229,10 +229,12 @@ program
       console.log(`${dir} already exists.`);
       process.exit(1);
     }
+    const abs = path.resolve(dir);
     // kde-translations/svn
     setupSvnCheckout(path.join(dir, "svn"), opts.readOnly, languages);
+    // come back to kde-translations/
+    process.chdir(abs);
     // kde-translations/l10n-templates
-    process.chdir(dir);
     const $$ = runcmd({ showcmd: true });
     $$(
       "git clone --depth 1 https://invent.kde.org/localization/l10n-templates",
@@ -262,6 +264,7 @@ program
 
     // kde-translations/{"","stable."}templates/{kf5,kf6}
     mkdirSync("stable.templates");
+    // again, these symlink targets are relative to the symlink itself
     symlinkSync(
       path.join("..", "l10n-templates", "stable5"),
       path.join("stable.templates", "kf5"),
