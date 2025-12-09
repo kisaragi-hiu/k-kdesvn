@@ -248,17 +248,18 @@ program
     // instead be managed by opening one of them at a time, then using
     // alternative translations to automatically synchronize them over.
     for (const lang of languages) {
-      for (const prefix of ["", "stable."]) {
-        const variant = `${prefix}${lang}`;
-        mkdirSync(variant);
-        for (const branch of ["kf5", "kf6"]) {
-          symlinkSync(
-            // this is what's written into the symlink, so it's relative to the
-            // symlink itself
-            path.join("..", "kde-svn", "trunk", `l10n-${branch}`, lang),
-            path.join(variant, branch),
-          );
-        }
+      for (const branch of ["kf5", "kf6"]) {
+        symlinkSync(
+          // this is what's written into the symlink, so it's relative to the
+          // symlink itself
+          path.join("..", "kde-svn", "trunk", `l10n-${branch}`, lang),
+          path.join(lang, branch),
+        );
+        symlinkSync(
+          // prettier-ignore
+          path.join("..", "kde-svn", "branches", "stable", `l10n-${branch}`, lang),
+          path.join(`stable.${lang}`, branch),
+        );
       }
     }
 
