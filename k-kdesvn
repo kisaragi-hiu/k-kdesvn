@@ -293,6 +293,26 @@ Use ${chalk.yellow("k-kdesvn update")} at ${dir}/kde-svn to do an svn update fol
   });
 
 program
+  .command("no-docmessages")
+  .description("Change the current workspace to not include docmessages")
+  .action(() => {
+    const abs = process.cwd();
+    const $$ = runcmd({ showcmd: true });
+    process.chdir("kde-svn");
+    $$("fd docmessages -j 1 -x svn update --set-depth empty");
+    $$("git add .");
+    $$("git commit -m", "don't keep track of docmessages");
+    process.chdir(abs);
+    process.chdir("l10n-templates");
+    $$(
+      "git sparse-checkout set",
+      ...["stable5", "stable6", "summit", "trunk5", "trunk6"].map((p) =>
+        path.join(p, "messages"),
+      ),
+    );
+  });
+
+program
   .command("check")
   .description("Do an msgfmt check for all po files")
   .action(cmdCheck);
