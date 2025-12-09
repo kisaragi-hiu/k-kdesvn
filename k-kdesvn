@@ -230,8 +230,8 @@ program
       process.exit(1);
     }
     const abs = path.resolve(dir);
-    // kde-translations/svn
-    setupSvnCheckout(path.join(dir, "svn"), opts.readOnly, languages);
+    // kde-translations/kde-svn
+    setupSvnCheckout(path.join(dir, "kde-svn"), opts.readOnly, languages);
     // come back to kde-translations/
     process.chdir(abs);
     // kde-translations/l10n-templates
@@ -255,7 +255,7 @@ program
           symlinkSync(
             // this is what's written into the symlink, so it's relative to the
             // symlink itself
-            path.join("..", "svn", "trunk", `l10n-${branch}`, lang),
+            path.join("..", "kde-svn", "trunk", `l10n-${branch}`, lang),
             path.join(variant, branch),
           );
         }
@@ -288,8 +288,7 @@ program
     console.log(`Checkout done.
 The Lokalize project can be seen in ${dir}/<language>/index.lokalize.
 The filled-in metadata most likely needs updating.
-
-Use ${chalk.yellow("k-kdesvn update")} at ${dir}/svn to do an svn update followed by adding the new changes into one local git commit.`);
+Use ${chalk.yellow("k-kdesvn update")} at ${dir}/kde-svn to do an svn update followed by adding the new changes into one local git commit.`);
   });
 
 program
