@@ -127,7 +127,7 @@ function setupSvnCheckout(
     ]).map((a) => a.join("/")),
   );
 
-  checkoutLanguages([...languages]);
+  checkoutLanguages(languages);
 
   console.log(`Setting up the local Git repository...`);
   $$("git init");
