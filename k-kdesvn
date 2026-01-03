@@ -327,9 +327,13 @@ Run this in the top level of the workspace itself, ie. the directory that includ
 `,
   )
   .action(() => {
-    const $$ = runcmd({ showcmd: true, shell: true, nothrow: true });
-    $$("cd kde-svn && svn update && git add . && git commit -m before");
-    $$("cd l10n-templates && git pull");
+    const $$ = runcmd({ showcmd: true, shell: true });
+    try {
+      $$("cd kde-svn && svn update && git add . && git commit -m before");
+      $$("cd l10n-templates && git pull");
+    } catch (_e) {
+      // do nothing, the commands already explain what went wrong
+    }
   });
 
 program

@@ -1,4 +1,4 @@
-/** Simple zx replacement. */
+/** """Simple""" zx replacement.  */
 
 import { spawnSync } from "node:child_process";
 
