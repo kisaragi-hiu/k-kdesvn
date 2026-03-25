@@ -369,6 +369,7 @@ Example:
   Fetch the last 100 revisions excluding authors "a" and "b":
     k-gitsvn log --exclude "a,b" # scripty is included in this case`,
   )
+  .argument("[path]", "Print log for PATH, defaults to the current directory")
   .option("-l, --limit <n>", "the --limit argument of svn log")
   .option("--since <date>", "Provide log from <date> to HEAD.")
   .option(
@@ -425,23 +426,26 @@ function cmdCheck() {
   })(`fd -e po -x msgfmt -o /dev/null --check-format`);
 }
 
-async function cmdLog(opts?: {
-  /** --limit as passed to svn log. Defaults to 100 if --since is not
-   * provided, undefined if it is. */
-  limit?: string;
-  /** List changes from this date to HEAD. */
-  since?: string;
-  /** Exclude these authors. Comma-separated but can also be an array. Defaults to "scripty". */
-  exclude?: string[];
-  /** Show only these authors. Higher priority than exclude. Comma-separated but can also be an array. Defaults to "scripty". */
-  only?: string[];
-  /** Highlight these authors. Comma-separated but can also be an array. Defaults to highlighting no one. */
-  highlight?: string[];
-  /** How to sort log entries. Undefined means return whatever svn log returns. */
-  sort?: string;
-  /** How to show commit messages. */
-  msgFormat?: string;
-}) {
+async function cmdLog(
+  path: string,
+  opts?: {
+    /** --limit as passed to svn log. Defaults to 100 if --since is not
+     * provided, undefined if it is. */
+    limit?: string;
+    /** List changes from this date to HEAD. */
+    since?: string;
+    /** Exclude these authors. Comma-separated but can also be an array. Defaults to "scripty". */
+    exclude?: string[];
+    /** Show only these authors. Higher priority than exclude. Comma-separated but can also be an array. Defaults to "scripty". */
+    only?: string[];
+    /** Highlight these authors. Comma-separated but can also be an array. Defaults to highlighting no one. */
+    highlight?: string[];
+    /** How to sort log entries. Undefined means return whatever svn log returns. */
+    sort?: string;
+    /** How to show commit messages. */
+    msgFormat?: string;
+  },
+) {
   const stream = process.stdout.isTTY
     ? spawn("/usr/bin/less", ["-R"], {
         stdio: ["pipe", "inherit", "inherit"],
@@ -475,6 +479,7 @@ Highlighted authors: ${[...highlightedSet].join(", ")}
     limit,
     revision,
     sort,
+    path,
   });
 
   for (const entry of logentries) {

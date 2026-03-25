@@ -30,6 +30,7 @@ export async function fetchLogEntries(opts?: {
   limit?: string;
   revision?: string;
   sort: ArgLogSort;
+  path?: string;
 }) {
   const output = await cached(
     `k-gitsvn-${hash("md5", JSON.stringify({ dir: cwd(), ...opts }))}`,
@@ -39,6 +40,7 @@ export async function fetchLogEntries(opts?: {
         "svn log --xml",
         ...(opts?.limit ? ["--limit", opts.limit] : []),
         ...(opts?.revision ? ["--revision", opts.revision] : []),
+        opts?.path ?? ".",
       ).stdout,
   );
 
