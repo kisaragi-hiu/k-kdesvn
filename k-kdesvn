@@ -341,7 +341,7 @@ program
   .summary("Copy latest Git commit message into the clipboard.")
   .description(
     `Copy latest Git commit message into the clipboard.
-Assumes xclip is installed and working.
+Assumes xsel is installed and working.
 `,
   )
   .action(cmdMsg);
@@ -411,14 +411,9 @@ async function cmdMsg() {
   ).stdout.trim();
   console.log("Message:");
   console.log(message);
-  // -l <n> specifies how many X requests before it exits. This is a quirk
-  // with how the clipboard in X is by default a communication channel between
-  // apps (copy source needs to be active to paste).
-  // Just, uh, try a few times. :shrug:
-  // This is my own script, it doesn't have to be super reliable.
   await $({
     input: message + "\n",
-  })`xclip -silent -l 5 -selection clipboard`;
+  })`xsel --clipboard`;
   console.log("Copied!");
 }
 

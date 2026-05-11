@@ -11,7 +11,7 @@ I use Git locally to track local changes.
 - Git
 - `k-kdesvn pocount` requires `fd`, `pocount`, and `grep`
 - `k-kdesvn check` requires `fd` and `msgfmt`
-- `k-kdesvn msg` requires `xclip` and being on X11
+- `k-kdesvn msg` requires `xsel` and being on X11
 
 # Features
 
