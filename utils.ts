@@ -5,7 +5,7 @@ import * as z from "npm:zod@4.1.11";
 import { XMLParser } from "npm:fast-xml-parser@5.2.5";
 import { cached } from "npm:@kisaragi-hiu/cached-fetch@0.2.0";
 
-import { runcmd } from "./runcmd.ts";
+import { $ } from "npm:zx@8.8.5";
 
 function ensureArray<T>(val: T) {
   return Array.isArray(val) ? val : [val];
@@ -36,12 +36,9 @@ export async function fetchLogEntries(opts?: {
     `k-gitsvn-${hash("md5", JSON.stringify({ dir: cwd(), ...opts }))}`,
     // the async is here to make it a promise
     () =>
-      runcmd({ quiet: true })(
-        "svn log --xml",
-        ...(opts?.limit ? ["--limit", opts.limit] : []),
-        ...(opts?.revision ? ["--revision", opts.revision] : []),
-        opts?.path ?? ".",
-      ).stdout,
+      $({
+        quiet: true,
+      })`svn log --xml ${opts?.limit ? ["--limit", opts.limit] : []} ${opts?.revision ? ["--revision", opts.revision] : []} ${opts?.path ?? "."}`,
   );
 
   const parser = new XMLParser({ ignoreAttributes: false });

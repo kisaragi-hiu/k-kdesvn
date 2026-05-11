@@ -37,7 +37,7 @@ import {
   ArgLogMsgFormat,
   ArgLogSort,
 } from "./utils.ts";
-import { runcmd } from "./runcmd.ts";
+import { $ } from "npm:zx@8.8.5";
 
 program.description(`Commands for managing a local checkout of an svn repository with git.
 
@@ -47,7 +47,7 @@ The Git repository is only here locally, and is used for local diff checking.`);
  * Check out `languages` for the current repository.
  * Assumes current directory is the top level of the svn working copy.
  */
-function checkoutLanguages(languages: string[]) {
+async function checkoutLanguages(languages: string[]) {
   // Valid team names. We read them here because they've only become
   // available here.
   const teamnames = readFileSync(`trunk/l10n-kf6/teamnames`, {
@@ -73,14 +73,13 @@ function checkoutLanguages(languages: string[]) {
     process.exit(1);
   }
   console.log(`Setting up language paths...`);
-  runcmd()(
-    "svn update --quiet --set-depth infinity",
-    ...fastCartesian([
-      ["trunk", "branches/stable"],
-      ["l10n-kf5", "l10n-kf6"],
-      languages,
-    ]).map((a) => a.join("/")),
-  );
+  await $({
+    verbose: true,
+  })`svn update --quiet --set-depth infinity ${fastCartesian([
+    ["trunk", "branches/stable"],
+    ["l10n-kf5", "l10n-kf6"],
+    languages,
+  ]).map((a) => a.join("/"))}`;
 }
 
 /**
@@ -89,7 +88,7 @@ function checkoutLanguages(languages: string[]) {
  * `languages`: set the repository up for these languages
  * HACK: this will leave process.chdir within `dir`.
  */
-function setupSvnCheckout(
+async function setupSvnCheckout(
   dir: string,
   readonly: boolean | undefined,
   languages: string[],
@@ -102,8 +101,8 @@ function setupSvnCheckout(
       ? `Checking out the read-only KDE subversion repository into ${dir}...`
       : `Checking out the read-write KDE subversion repository into ${dir}...`,
   );
-  const $$ = runcmd({ showcmd: true });
-  $$("svn checkout --depth=empty", repoUrl, dir);
+  const $$ = $({ verbose: true });
+  await $$`svn checkout --depth=empty ${repoUrl} ${dir}`;
   process.chdir(dir);
   // The goal:
   //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{...}
@@ -115,28 +114,28 @@ function setupSvnCheckout(
   // - Set depth to files, which has irrelevant files but is the least bad
   // So this is setting the directory.
   console.log(`Setting up parent paths...`);
-  $$("svn update --set-depth files trunk");
-  $$("svn update --set-depth files branches");
-  $$("svn update --set-depth files branches/stable");
-  $$(
-    "svn update --set-depth files",
-    // Doing the product in JS makes it to pass in variables
-    ...fastCartesian([
+  await $$`svn update --set-depth files trunk`;
+  await $$`svn update --set-depth files branches`;
+  await $$`svn update --set-depth files branches/stable`;
+  await $$`svn update --set-depth files `;
+  await $$`svn update --set-depth files ${
+    // Doing the product in JS makes it easy to pass in variables
+    fastCartesian([
       ["trunk", "branches/stable"],
       ["l10n-kf5", "l10n-kf6"],
-    ]).map((a) => a.join("/")),
-  );
+    ]).map((a) => a.join("/"))
+  }`;
 
-  checkoutLanguages(languages);
+  await checkoutLanguages(languages);
 
   console.log(`Setting up the local Git repository...`);
-  $$("git init");
+  await $$`git init`;
   console.log(`Excluding .svn from Git...`);
   mkdirSync(path.join(".git", "info"), { recursive: true });
   writeFileSync(path.join(".git", "info", "exclude"), `.svn/`);
   console.log(`Creating initial Git commit...`);
-  $$("git add .");
-  $$("git commit -m before");
+  await $$`git add .`;
+  await $$`git commit -m before`;
 }
 
 /**
@@ -217,7 +216,7 @@ program
     "Which languages to clone, as language codes. Comma-separated.",
   )
   .option("--read-only", "the --limit argument of svn log")
-  .action((dir: string, opts: { langs?: string; readOnly?: boolean }) => {
+  .action(async (dir: string, opts: { langs?: string; readOnly?: boolean }) => {
     const languages = opts?.langs
       ? opts.langs.split(",").map((x) => x.trim())
       : [];
@@ -231,14 +230,12 @@ program
     }
     const abs = path.resolve(dir);
     // kde-translations/kde-svn
-    setupSvnCheckout(path.join(dir, "kde-svn"), opts.readOnly, languages);
+    await setupSvnCheckout(path.join(dir, "kde-svn"), opts.readOnly, languages);
     // come back to kde-translations/
     process.chdir(abs);
     // kde-translations/l10n-templates
-    const $$ = runcmd({ showcmd: true });
-    $$(
-      "git clone --depth 1 https://invent.kde.org/localization/l10n-templates",
-    );
+    const $$ = $({ verbose: true });
+    await $$`git clone --depth 1 https://invent.kde.org/localization/l10n-templates`;
 
     console.log("Creating Lokalize project structure...");
     // kde-translations/{"","stable."}<lang>/{kf5,kf6}
@@ -295,21 +292,24 @@ Use ${chalk.yellow("k-kdesvn update")} at ${dir} to do an svn update followed by
 program
   .command("no-docmessages")
   .description("Change the current workspace to not include docmessages")
-  .action(() => {
+  .action(async () => {
     const abs = process.cwd();
-    const $$ = runcmd({ showcmd: true });
+    const $$ = $({ verbose: true });
     process.chdir("kde-svn");
-    $$("fd docmessages -j 1 -x svn update --set-depth empty");
-    $$("git add .");
-    $$("git commit -m", "don't keep track of docmessages");
+    await $$`fd docmessages -j 1 -x svn update --set-depth empty`;
+    await $$`git add .`;
+    await $$`git commit -m "don't keep track of docmessages"`;
     process.chdir(abs);
     process.chdir("l10n-templates");
-    $$(
-      "git sparse-checkout set",
-      ...["stable5", "stable6", "summit", "trunk5", "trunk6"].map((p) =>
-        path.join(p, "messages"),
-      ),
-    );
+    await $$`
+      git sparse-checkout set ${[
+        "stable5",
+        "stable6",
+        "summit",
+        "trunk5",
+        "trunk6",
+      ].map((p) => path.join(p, "messages"))}
+    `;
   });
 
 program
@@ -326,11 +326,11 @@ This updates both the svn repository and the templates Git repository.
 Run this in the top level of the workspace itself, ie. the directory that includes ./kde-svn and ./l10n-templates.
 `,
   )
-  .action(() => {
-    const $$ = runcmd({ showcmd: true, shell: true });
+  .action(async () => {
+    const $$ = $({ verbose: true });
     try {
-      $$("cd kde-svn && svn update && git add . && git commit -m before");
-      $$("cd l10n-templates && git pull");
+      await $$`cd kde-svn && svn update && git add . && git commit -m before`;
+      await $$`cd l10n-templates && git pull`;
     } catch (_e) {
       // do nothing, the commands already explain what went wrong
     }
@@ -349,10 +349,11 @@ Assumes xclip is installed and working.
 program
   .command("pocount")
   .summary("Show stats of the current folder with pocount.")
-  .action(() => {
-    runcmd({ shell: true, nothrow: true, showcmd: true })(
-      "fd -L -e po -X pocount | grep TOTAL -A 8 | grep -v TOTAL",
-    );
+  .action(async () => {
+    await $({
+      nothrow: true,
+      verbose: true,
+    })`fd -L -e po -X pocount | grep TOTAL -A 8 | grep -v TOTAL`;
   });
 
 program
@@ -404,30 +405,32 @@ Example:
  * The plumbing from this to svn commit is not yet done. For now just, uh, run
  * the command yourself and paste it in.
  */
-function cmdMsg() {
-  const message = runcmd({ quiet: true })(
-    "git show --format=%B --no-patch HEAD",
+async function cmdMsg() {
+  const message = (
+    await $({ quiet: true })`git show --format=%B --no-patch HEAD`
   ).stdout.trim();
+  console.log("Message:");
+  console.log(message);
   // -l <n> specifies how many X requests before it exits. This is a quirk
   // with how the clipboard in X is by default a communication channel between
   // apps (copy source needs to be active to paste).
   // Just, uh, try a few times. :shrug:
   // This is my own script, it doesn't have to be super reliable.
-  runcmd({ input: message + "\n" })(
-    "xclip -silent -r -l 5 -selection clipboard",
-  );
+  await $({
+    input: message + "\n",
+  })`xclip -silent -l 5 -selection clipboard`;
   console.log("Copied!");
 }
 
-function cmdCheck() {
-  runcmd({
-    showcmd: true,
+async function cmdCheck() {
+  await $({
     nothrow: true,
-  })(`fd -e po -x msgfmt -o /dev/null --check-format`);
+    verbose: true,
+  })`fd -e po -x msgfmt -o /dev/null --check-format`;
 }
 
 async function cmdLog(
-  path: string,
+  path?: string,
   opts?: {
     /** --limit as passed to svn log. Defaults to 100 if --since is not
      * provided, undefined if it is. */
