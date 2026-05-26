@@ -13,6 +13,7 @@ import {
 import { spawn } from "node:child_process";
 import * as process from "node:process";
 import path from "node:path";
+import { homedir } from "node:os";
 
 // Fancy name for "every combination" that Shell exposes in the {a,b}{c,d}
 // wildcard syntax.
@@ -326,11 +327,17 @@ This updates both the svn repository and the templates Git repository.
 Run this in the top level of the workspace itself, ie. the directory that includes ./kde-svn and ./l10n-templates.
 `,
   )
-  .action(async () => {
+  .argument(
+    "[dir]",
+    "Where the workspace is, defaults to '~/kde-translations'",
+    path.join(homedir(), "kde-translations"),
+  )
+  .action(async (dir: string) => {
     const $$ = $({ verbose: true });
     try {
-      await $$`cd kde-svn && svn update && git add . && git commit -m before`;
-      await $$`cd l10n-templates && git pull`;
+      const abs = path.resolve(dir)
+      await $$`cd ${path.join(abs, "kde-svn")} && svn update && git add . && git commit -m before`;
+      await $$`cd ${path.join(abs, "l10n-templates")} && git pull`;
     } catch (_e) {
       // do nothing, the commands already explain what went wrong
     }
