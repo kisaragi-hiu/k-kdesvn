@@ -316,7 +316,11 @@ program
 program
   .command("check")
   .description("Do an msgfmt check for all po files")
-  .action(cmdCheck);
+  .action(async () => {
+    const $$ = $({ nothrow: true, verbose: true });
+    await $$`fd -e po -x msgfmt -o /dev/null --check-format`;
+    await $$`posieve check-tp-kde .`;
+  });
 
 program
   .command("update")
@@ -335,7 +339,7 @@ Run this in the top level of the workspace itself, ie. the directory that includ
   .action(async (dir: string) => {
     const $$ = $({ verbose: true });
     try {
-      const abs = path.resolve(dir)
+      const abs = path.resolve(dir);
       await $$`cd ${path.join(abs, "kde-svn")} && svn update && git add . && git commit -m before`;
       await $$`cd ${path.join(abs, "l10n-templates")} && git pull`;
     } catch (_e) {
@@ -422,13 +426,6 @@ async function cmdMsg() {
     input: message + "\n",
   })`xsel --clipboard`;
   console.log("Copied!");
-}
-
-async function cmdCheck() {
-  await $({
-    nothrow: true,
-    verbose: true,
-  })`fd -e po -x msgfmt -o /dev/null --check-format`;
 }
 
 async function cmdLog(
