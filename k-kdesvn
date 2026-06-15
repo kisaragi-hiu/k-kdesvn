@@ -630,11 +630,11 @@ and nan_TW@latin), the target language code would need to be modified to match.
 This automates that.`,
   )
   .action(async () => {
-    // %T@ means "mtime as unix time", %P means file path
+    // %T@ means "mtime as unix time", %p means file path including starting point
     // sort -n for numeric sort, -r for reversed (larger number first = newer first)
     // head -1 to grab just the first one
     const newer = (
-      await $`find nan_TW nan_TW@latin -name 'terms.tbx' -printf '%T@ %P\\n' | env LC_ALL=C sort -nr | head -1 | cut -d' ' -f2`
+      await $`find nan_TW nan_TW@latin -name 'terms.tbx' -printf '%T@ %p\n' | env LC_ALL=C sort -nr | head -1 | cut -d' ' -f2`
     )
       .text()
       .trim();
