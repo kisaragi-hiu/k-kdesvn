@@ -154,6 +154,10 @@ async function setupSvnCheckout(
  * Assumes we are in the main dir.
  */
 function setupLanguageSymlinks(lang: string) {
+  const trunk = lang;
+  const stable = `stable.${lang}`;
+  mkdirSync(trunk, { recursive: true });
+  mkdirSync(stable, { recursive: true });
   // kde-translations/{"","stable."}<lang>/{kf5,kf6}
   // We do {"","stable."}/<lang>/{kf5,kf6} because Lokalize finds files based
   // on the directory hierarchy, and we want to see kf5 and kf6 at once, but
@@ -165,12 +169,12 @@ function setupLanguageSymlinks(lang: string) {
       // this is what's written into the symlink, so it's relative to the
       // symlink itself
       path.join("..", "kde-svn", "trunk", `l10n-${branch}`, lang),
-      path.join(lang, branch),
+      path.join(trunk, branch),
     );
     symlinkSync(
       // prettier-ignore
       path.join("..", "kde-svn", "branches", "stable", `l10n-${branch}`, lang),
-      path.join(`stable.${lang}`, branch),
+      path.join(stable, branch),
     );
   }
 }
