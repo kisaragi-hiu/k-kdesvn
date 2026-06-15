@@ -119,7 +119,6 @@ async function setupSvnCheckout(
   await $$`svn update --set-depth files trunk`;
   await $$`svn update --set-depth files branches`;
   await $$`svn update --set-depth files branches/stable`;
-  await $$`svn update --set-depth files `;
   await $$`svn update --set-depth files ${
     // Doing the product in JS makes it easy to pass in variables
     fastCartesian([
