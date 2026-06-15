@@ -614,7 +614,7 @@ nan_TW should be all-singular, but currently nan_TW files are initiated to
   .action(async () => {
     await $({
       verbose: true,
-    })`find -L nan_TW nan_TW@latin -path '*.po' -execdir sed -i s/'"Plural-Forms: nplurals=2; plural=n != 1;\\n"'/'"Plural-Forms: nplurals=1; plural=0;\\n"'/ '{}' ';'`;
+    })`find -L nan_TW nan_TW@latin -path '*.po' -execdir sed -i 's/"Plural-Forms: nplurals=2; plural=n != 1;\\\\n"/"Plural-Forms: nplurals=1; plural=0;\\\\n"/' '{}' ';'`;
   });
 
 // TODO: maybe we should put the glossaries in SVN
