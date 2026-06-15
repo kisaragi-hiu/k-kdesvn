@@ -45,6 +45,20 @@ program.description(`Commands for managing a local checkout of an svn repository
 
 The Git repository is only here locally, and is used for local diff checking.`);
 
+/** Return team codes and names from the teamnames file as a record. */
+function getTeamnames() {
+  const ret: Record<string, string> = {};
+  for (const line of readFileSync(`trunk/l10n-kf6/teamnames`, {
+    encoding: "utf-8",
+  }).split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0 || trimmed.startsWith("#")) continue;
+    const [code, name] = trimmed.split("=") as [string, string];
+    ret[code] = name;
+  }
+  return ret;
+}
+
 /**
  * Check out `languages` for the current repository.
  * Assumes current directory is the top level of the svn working copy.
@@ -52,19 +66,9 @@ The Git repository is only here locally, and is used for local diff checking.`);
 async function checkoutLanguages(languages: string[]) {
   // Valid team names. We read them here because they've only become
   // available here.
-  const teamnames = readFileSync(`trunk/l10n-kf6/teamnames`, {
-    encoding: "utf-8",
-  })
-    .split("\n")
-    .map((x) => {
-      const trimmed = x.trim();
-      return trimmed.length === 0 || trimmed.startsWith("#")
-        ? undefined
-        : trimmed.split("=")[0];
-    })
-    .filter((x) => typeof x === "string");
+  const codesFromTeamnames = Object.keys(getTeamnames());
   const invalidLanguages = [
-    ...new Set(languages).difference(new Set(teamnames)),
+    ...new Set(languages).difference(new Set(codesFromTeamnames)),
   ];
   if (invalidLanguages.length > 0) {
     console.log(
