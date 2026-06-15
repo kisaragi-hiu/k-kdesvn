@@ -199,7 +199,7 @@ function initLokalizeProject(lang?: string, reference?: string) {
   const mailingList =
     targetLang === "zh_TW"
       ? "zh-l10n@lists.slat.org"
-      : promptLoop(`Mailing list for ${targetLang}`);
+      : promptLoop(`Mailing list for ${targetLang}:`);
   const languageName =
     targetLang === "zh_TW" ? "Traditional Chinese" : getTeamnames()[targetLang];
 
