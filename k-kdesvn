@@ -39,7 +39,7 @@ import {
   ArgLogMsgFormat,
   ArgLogSort,
 } from "./utils.ts";
-import { $ } from "npm:zx@8.8.5";
+import { $, cd } from "npm:zx@8.8.5";
 
 program.description(`Commands for managing a local checkout of an svn repository with git.
 
@@ -81,7 +81,6 @@ async function checkoutLanguages(languages: string[]) {
   console.log(`Setting up language paths...`);
   await $({
     verbose: true,
-    cwd: process.cwd(),
   })`svn update --quiet --set-depth infinity ${fastCartesian([
     ["trunk", "branches/stable"],
     ["l10n-kf5", "l10n-kf6"],
@@ -95,13 +94,14 @@ async function checkoutLanguages(languages: string[]) {
  * Checkout the KDE SVN repository to `dir` then set it up.
  * `readonly`: whether to clone from the readonly repo or not
  * `languages`: set the repository up for these languages
- * HACK: this will leave process.chdir within `dir`.
+ * NOTE: This will manipulate cwd and cannot actually be run in parallel.
  */
 async function setupSvnCheckout(
   dir: string,
   readonly: boolean | undefined,
   languages: string[],
 ) {
+  const pwdBefore = process.cwd();
   const repoUrl = readonly
     ? "svn://anonsvn.kde.org/home/kde/"
     : "svn+ssh://svn@svn.kde.org/home/kde/";
@@ -112,7 +112,7 @@ async function setupSvnCheckout(
   );
   const $$ = $({ verbose: true });
   await $$`svn checkout --depth=empty ${repoUrl} ${escapeFile(dir)}`;
-  process.chdir(dir);
+  cd(dir);
   // The goal:
   //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{...}
   //   svn update --set-depth infinity trunk/l10n-kf{5,6}/{...}
@@ -146,6 +146,7 @@ async function setupSvnCheckout(
   console.log(`Creating initial Git commit...`);
   await $$`git add .`;
   await $$`git commit -m before`;
+  cd(pwdBefore);
 }
 
 /**
@@ -268,11 +269,8 @@ program
       console.log(`${dir} already exists.`);
       process.exit(1);
     }
-    const abs = path.resolve(dir);
     // kde-translations/kde-svn
     await setupSvnCheckout(path.join(dir, "kde-svn"), opts.readOnly, languages);
-    // come back to kde-translations/
-    process.chdir(abs);
     // kde-translations/l10n-templates
     const $$ = $({ verbose: true });
     await $$`git clone --depth 1 https://invent.kde.org/localization/l10n-templates`;
@@ -319,12 +317,12 @@ program
   .action(async () => {
     const abs = process.cwd();
     const $$ = $({ verbose: true });
-    process.chdir("kde-svn");
+    cd("kde-svn");
     await $$`fd docmessages -j 1 -x svn update --set-depth empty`;
     await $$`git add .`;
     await $$`git commit -m "don't keep track of docmessages"`;
-    process.chdir(abs);
-    process.chdir("l10n-templates");
+    cd(abs);
+    cd("l10n-templates");
     await $$`
       git sparse-checkout set ${[
         "stable5",
@@ -351,9 +349,9 @@ program
       console.log(`Please specify the language with --lang`);
       process.exit(1);
     }
-    process.chdir(path.resolve(path.join(dir, "kde-svn")));
+    cd(path.resolve(path.join(dir, "kde-svn")));
     await checkoutLanguages([opts.lang]);
-    process.chdir(path.resolve(path.join(dir)));
+    cd(path.resolve(path.join(dir)));
     setupLanguageSymlinks(opts.lang);
     initLokalizeProject(opts.lang);
   });
