@@ -117,11 +117,13 @@ export function parseCommaSeparated(
 }
 
 /**
- * Add an "@" to the end of `file`.
+ * Add an "@" to the end of `file` if needed.
  * This makes it so SVN does not see an "@" in `file` as specifying a revision.
  */
 export function escapeFile(file: string) {
-  // If `file` is an empty string, don't add an @ to it.
-  if (!file) return file;
-  return `${file}@`;
+  if (file.includes("@")) {
+    return `${file}@`;
+  } else {
+    return file;
+  }
 }
