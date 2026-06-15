@@ -149,6 +149,32 @@ async function setupSvnCheckout(
 }
 
 /**
+ * Set up symlinks for `lang`.
+ * Assumes we are in the main dir.
+ */
+function setupLanguageSymlinks(lang: string) {
+  // kde-translations/{"","stable."}<lang>/{kf5,kf6}
+  // We do {"","stable."}/<lang>/{kf5,kf6} because Lokalize finds files based
+  // on the directory hierarchy, and we want to see kf5 and kf6 at once, but
+  // we don't want to see trunk and stable at once. Trunk and stable should
+  // instead be managed by opening one of them at a time, then using
+  // alternative translations to automatically synchronize them over.
+  for (const branch of ["kf5", "kf6"]) {
+    symlinkSync(
+      // this is what's written into the symlink, so it's relative to the
+      // symlink itself
+      path.join("..", "kde-svn", "trunk", `l10n-${branch}`, lang),
+      path.join(lang, branch),
+    );
+    symlinkSync(
+      // prettier-ignore
+      path.join("..", "kde-svn", "branches", "stable", `l10n-${branch}`, lang),
+      path.join(`stable.${lang}`, branch),
+    );
+  }
+}
+
+/**
  * Create the Lokalize project file for `lang`.
  * Assumes we are in the main dir.
  */
@@ -250,28 +276,11 @@ program
     await $$`git clone --depth 1 https://invent.kde.org/localization/l10n-templates`;
 
     console.log("Creating Lokalize project structure...");
-    // kde-translations/{"","stable."}<lang>/{kf5,kf6}
-    // We do {"","stable."}/<lang>/{kf5,kf6} because Lokalize finds files based
-    // on the directory hierarchy, and we want to see kf5 and kf6 at once, but
-    // we don't want to see trunk and stable at once. Trunk and stable should
-    // instead be managed by opening one of them at a time, then using
-    // alternative translations to automatically synchronize them over.
     for (const lang of languages) {
-      for (const branch of ["kf5", "kf6"]) {
-        symlinkSync(
-          // this is what's written into the symlink, so it's relative to the
-          // symlink itself
-          path.join("..", "kde-svn", "trunk", `l10n-${branch}`, lang),
-          path.join(lang, branch),
-        );
-        symlinkSync(
-          // prettier-ignore
-          path.join("..", "kde-svn", "branches", "stable", `l10n-${branch}`, lang),
-          path.join(`stable.${lang}`, branch),
-        );
-      }
+      setupLanguageSymlinks(lang);
     }
 
+    console.log("Setting up templates...");
     // kde-translations/{"","stable."}templates/{kf5,kf6}
     mkdirSync("stable.templates");
     // again, these symlink targets are relative to the symlink itself
@@ -293,6 +302,7 @@ program
       path.join("templates", "kf6"),
     );
 
+    console.log("Setting up Lokalize project...");
     initLokalizeProject();
 
     console.log(`Checkout done.
@@ -342,6 +352,7 @@ program
     process.chdir(path.resolve(path.join(dir, "kde-svn")));
     await checkoutLanguages([opts.lang]);
     process.chdir(path.resolve(path.join(dir)));
+    setupLanguageSymlinks(opts.lang);
     initLokalizeProject(opts.lang);
   });
 
