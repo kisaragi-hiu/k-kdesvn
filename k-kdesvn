@@ -314,6 +314,26 @@ program
   });
 
 program
+  .command("checkout-language")
+  .description("Add a language to the workspace")
+  .argument(
+    "[dir]",
+    "Where the workspace is, defaults to '~/kde-translations'",
+    path.join(homedir(), "kde-translations"),
+  )
+  .option("--lang <language>", "Which language to clone, as a language code.")
+  .action(async (dir: string, opts: { lang?: string }) => {
+    // only support one since we also need to initialize the project
+    if (!opts.lang) {
+      console.log(`Please specify the language with --lang`);
+      process.exit(1);
+    }
+    process.chdir(path.resolve(path.join(dir, "kde-svn")));
+    await checkoutLanguages([opts.lang]);
+    initLokalizeProject(opts.lang);
+  });
+
+program
   .command("check")
   .description("Do an msgfmt check for all po files")
   .action(async () => {
