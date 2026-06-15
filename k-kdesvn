@@ -35,6 +35,7 @@ import {
   parseCommaSeparated,
   formatISO,
   fetchLogEntries,
+  escapeFile,
   ArgLogMsgFormat,
   ArgLogSort,
 } from "./utils.ts";
@@ -81,7 +82,9 @@ async function checkoutLanguages(languages: string[]) {
     ["trunk", "branches/stable"],
     ["l10n-kf5", "l10n-kf6"],
     languages,
-  ]).map((a) => a.join("/"))}`;
+  ])
+    .map((a) => a.join("/"))
+    .map((f) => escapeFile(f))}`;
 }
 
 /**
@@ -104,7 +107,7 @@ async function setupSvnCheckout(
       : `Checking out the read-write KDE subversion repository into ${dir}...`,
   );
   const $$ = $({ verbose: true });
-  await $$`svn checkout --depth=empty ${repoUrl} ${dir}`;
+  await $$`svn checkout --depth=empty ${repoUrl} ${escapeFile(dir)}`;
   process.chdir(dir);
   // The goal:
   //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{...}
@@ -124,7 +127,9 @@ async function setupSvnCheckout(
     fastCartesian([
       ["trunk", "branches/stable"],
       ["l10n-kf5", "l10n-kf6"],
-    ]).map((a) => a.join("/"))
+    ])
+      .map((a) => a.join("/"))
+      .map((f) => escapeFile(f))
   }`;
 
   await checkoutLanguages(languages);

@@ -115,3 +115,13 @@ export function parseCommaSeparated(
   if (typeof val === "string") return val.split(",");
   return val.flatMap((x) => x.split(","));
 }
+
+/**
+ * Add an "@" to the end of `file`.
+ * This makes it so SVN does not see an "@" in `file` as specifying a revision.
+ */
+export function escapeFile(file: string) {
+  // If `file` is an empty string, don't add an @ to it.
+  if (!file) return file;
+  return `${file}@`;
+}
