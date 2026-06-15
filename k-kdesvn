@@ -46,7 +46,7 @@ program.description(`Commands for managing a local checkout of an svn repository
 The Git repository is only here locally, and is used for local diff checking.`);
 
 /** Return team codes and names from the teamnames file as a record. */
-function getTeamnames() {
+function getTeamnames(): Record<string, string> {
   const ret: Record<string, string> = {};
   for (const line of readFileSync(`trunk/l10n-kf6/teamnames`, {
     encoding: "utf-8",
@@ -189,12 +189,14 @@ function initLokalizeProject(lang?: string, reference?: string) {
   const targetLang =
     lang ?? promptLoop("Primary language (for Lokalize project):");
   const referenceLang =
-    reference ?? promptLoop("Reference language (for Lokalize project):");
+    reference ?? promptLoop(`Reference language for ${targetLang}:`);
 
   const mailingList =
-    targetLang === "zh_TW" ? "zh-l10n@lists.slat.org" : "Please fill this in";
+    targetLang === "zh_TW"
+      ? "zh-l10n@lists.slat.org"
+      : promptLoop(`Mailing list for ${targetLang}`);
   const languageName =
-    targetLang === "zh_TW" ? "Traditional Chinese" : "Please fill this in";
+    targetLang === "zh_TW" ? "Traditional Chinese" : getTeamnames()[targetLang];
 
   const trunkAlt = referenceLang;
   const stableAlt = `stable.${referenceLang}`;
