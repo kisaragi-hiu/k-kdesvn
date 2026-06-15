@@ -596,4 +596,57 @@ Highlighted authors: ${[...highlightedSet].join(", ")}
     },
   );
 
+const nan_TW_sub = program
+  .command("nan-tw")
+  .description("Extra commands for nan_TW");
+
+nan_TW_sub
+  .command("fix-plurals")
+  .summary("Fix broken default plurals for nan_TW")
+  .description(
+    `Fix plurals.
+
+This should be run at the root of the translation workspace.
+
+nan_TW should be all-singular, but currently nan_TW files are initiated to
+\`nplurals=2; plural=n != 1;\`. This works around it.`,
+  )
+  .action(async () => {
+    await $({
+      verbose: true,
+    })`find -L nan_TW nan_TW@latin -path '*.po' -execdir sed -i s/'"Plural-Forms: nplurals=2; plural=n != 1;\\n"'/'"Plural-Forms: nplurals=1; plural=0;\\n"'/ '{}' ';'`;
+  });
+
+// TODO: maybe we should put the glossaries in SVN
+nan_TW_sub
+  .command("sync-glossaries")
+  .summary("Synchronize nan_TW and nan_TW@latin glossaries")
+  .description(
+    `Synchronize nan_TW and nan_TW@latin glossaries.
+
+Lokalize cares about the target language code in a glossary, so when sharing one
+glossary with two projects with different language codes (which applies to nan_TW
+and nan_TW@latin), the target language code would need to be modified to match.
+This automates that.`,
+  )
+  .action(async () => {
+    // %T@ means "mtime as unix time", %P means file path
+    // sort -n for numeric sort, -r for reversed (larger number first = newer first)
+    // head -1 to grab just the first one
+    const newer = (
+      await $`find nan_TW nan_TW@latin -name 'terms.tbx' -printf '%T@ %P\\n' | env LC_ALL=C sort -nr | head -1 | cut -d' ' -f2`
+    )
+      .text()
+      .trim();
+    if (newer.includes("latin")) {
+      const older = "nan_TW/terms.tbx";
+      console.log(`Copying ${newer} to ${older}...`);
+      await $`sed s/'xml:lang="nan-TW@latin"'/'xml:lang="nan-TW"'/ nan_TW@latin/terms.tbx > nan_TW/terms.tbx`;
+    } else {
+      const older = "nan_TW@latin/terms.tbx";
+      console.log(`Copying ${newer} to ${older}...`);
+      await $`sed s/'xml:lang="nan-TW"'/'xml:lang="nan-TW@latin"'/ nan_TW/terms.tbx > nan_TW@latin/terms.tbx`;
+    }
+  });
+
 await program.parseAsync();
