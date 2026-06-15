@@ -407,7 +407,17 @@ program
 Assumes xsel is installed and working.
 `,
   )
-  .action(cmdMsg);
+  .action(async () => {
+    const message = (
+      await $({ quiet: true })`git show --format=%B --no-patch HEAD`
+    ).stdout.trim();
+    console.log("Message:");
+    console.log(message);
+    await $({
+      input: message + "\n",
+    })`xsel --clipboard`;
+    console.log("Copied!");
+  });
 
 program
   .command("pocount")
@@ -461,141 +471,129 @@ Example:
       .default("new-first")
       .choices(ArgLogSort.options),
   )
-  .action(cmdLog);
+  .action(
+    async (
+      path?: string,
+      opts?: {
+        /** --limit as passed to svn log. Defaults to 100 if --since is not
+         * provided, undefined if it is. */
+        limit?: string;
+        /** List changes from this date to HEAD. */
+        since?: string;
+        /** Exclude these authors. Comma-separated but can also be an array. Defaults to "scripty". */
+        exclude?: string[];
+        /** Show only these authors. Higher priority than exclude. Comma-separated but can also be an array. Defaults to "scripty". */
+        only?: string[];
+        /** Highlight these authors. Comma-separated but can also be an array. Defaults to highlighting no one. */
+        highlight?: string[];
+        /** How to sort log entries. Undefined means return whatever svn log returns. */
+        sort?: string;
+        /** How to show commit messages. */
+        msgFormat?: string;
+      },
+    ) => {
+      const stream = process.stdout.isTTY
+        ? spawn("/usr/bin/less", ["-R"], {
+            stdio: ["pipe", "inherit", "inherit"],
+          }).stdin
+        : process.stdout;
+      const revision = opts?.since && `{${opts.since}}:HEAD`;
+      // When --since is provided, --limit should act like no limit by default
+      // but when --since is not provided, --limit should have a default of 100
+      const limit = opts?.limit ?? (revision ? undefined : "100");
+      // Specify defaults in one place.
+      const sort = ArgLogSort.parse(opts?.sort ?? "new-first");
+      const msgFormat = ArgLogMsgFormat.parse(opts?.msgFormat ?? "full");
+      const sep = chalk.grey("-".repeat(72));
+      const excludeSet = new Set(
+        parseCommaSeparated(opts?.exclude, ["scripty"]),
+      );
+      const onlySet = new Set(parseCommaSeparated(opts?.only, []));
+      const highlightedSet = new Set(parseCommaSeparated(opts?.highlight, []));
+      const authors = new Map<string, number>();
 
-/**
- * Show and copy message of the latest commit from Git.
- * The plumbing from this to svn commit is not yet done. For now just, uh, run
- * the command yourself and paste it in.
- */
-async function cmdMsg() {
-  const message = (
-    await $({ quiet: true })`git show --format=%B --no-patch HEAD`
-  ).stdout.trim();
-  console.log("Message:");
-  console.log(message);
-  await $({
-    input: message + "\n",
-  })`xsel --clipboard`;
-  console.log("Copied!");
-}
-
-async function cmdLog(
-  path?: string,
-  opts?: {
-    /** --limit as passed to svn log. Defaults to 100 if --since is not
-     * provided, undefined if it is. */
-    limit?: string;
-    /** List changes from this date to HEAD. */
-    since?: string;
-    /** Exclude these authors. Comma-separated but can also be an array. Defaults to "scripty". */
-    exclude?: string[];
-    /** Show only these authors. Higher priority than exclude. Comma-separated but can also be an array. Defaults to "scripty". */
-    only?: string[];
-    /** Highlight these authors. Comma-separated but can also be an array. Defaults to highlighting no one. */
-    highlight?: string[];
-    /** How to sort log entries. Undefined means return whatever svn log returns. */
-    sort?: string;
-    /** How to show commit messages. */
-    msgFormat?: string;
-  },
-) {
-  const stream = process.stdout.isTTY
-    ? spawn("/usr/bin/less", ["-R"], {
-        stdio: ["pipe", "inherit", "inherit"],
-      }).stdin
-    : process.stdout;
-  const revision = opts?.since && `{${opts.since}}:HEAD`;
-  // When --since is provided, --limit should act like no limit by default
-  // but when --since is not provided, --limit should have a default of 100
-  const limit = opts?.limit ?? (revision ? undefined : "100");
-  // Specify defaults in one place.
-  const sort = ArgLogSort.parse(opts?.sort ?? "new-first");
-  const msgFormat = ArgLogMsgFormat.parse(opts?.msgFormat ?? "full");
-  const sep = chalk.grey("-".repeat(72));
-  const excludeSet = new Set(parseCommaSeparated(opts?.exclude, ["scripty"]));
-  const onlySet = new Set(parseCommaSeparated(opts?.only, []));
-  const highlightedSet = new Set(parseCommaSeparated(opts?.highlight, []));
-  const authors = new Map<string, number>();
-
-  stream.write(
-    `--limit: ${limit ?? "unspecified"}
+      stream.write(
+        `--limit: ${limit ?? "unspecified"}
 --revision: ${revision ?? "unspecified"}
 Sort: ${sort ?? "unspecified"}
 Excluded authors: ${[...excludeSet].join(", ")}
 "Only" authors: ${[...onlySet].join(", ")}
 Highlighted authors: ${[...highlightedSet].join(", ")}
 ` + "\n",
-  );
+      );
 
-  console.error("Fetching log messages from remote...");
-  const logentries = await fetchLogEntries({
-    limit,
-    revision,
-    sort,
-    path,
-  });
+      console.error("Fetching log messages from remote...");
+      const logentries = await fetchLogEntries({
+        limit,
+        revision,
+        sort,
+        path,
+      });
 
-  for (const entry of logentries) {
-    authors.set(entry.author, (authors.get(entry.author) || 0) + 1);
-    // When --only is specified, exclude everyone not on that list
-    if (onlySet.size !== 0 && !onlySet.has(entry.author)) continue;
-    // excluded and not in the only list -> skip the entry
-    // excluded but in the only list -> keep the entry
-    // because we want --only to have higher priority
-    if (excludeSet.has(entry.author) && !onlySet.has(entry.author)) continue;
-    const moment = entry.date;
-    stream.write(sep);
-    stream.write("\n");
-    const revision = entry["@_revision"];
-    stream.write(
-      `r${chalk.blue(
-        link(
-          revision,
-          `https://websvn.kde.org/?view=revision&revision=${revision}`,
+      for (const entry of logentries) {
+        authors.set(entry.author, (authors.get(entry.author) || 0) + 1);
+        // When --only is specified, exclude everyone not on that list
+        if (onlySet.size !== 0 && !onlySet.has(entry.author)) continue;
+        // excluded and not in the only list -> skip the entry
+        // excluded but in the only list -> keep the entry
+        // because we want --only to have higher priority
+        if (excludeSet.has(entry.author) && !onlySet.has(entry.author))
+          continue;
+        const moment = entry.date;
+        stream.write(sep);
+        stream.write("\n");
+        const revision = entry["@_revision"];
+        stream.write(
+          `r${chalk.blue(
+            link(
+              revision,
+              `https://websvn.kde.org/?view=revision&revision=${revision}`,
+            ),
+          )} ${chalk.grey("|")} ${
+            highlightedSet.has(entry.author)
+              ? chalk.yellow.bold(entry.author)
+              : chalk.yellow(entry.author)
+          } ${chalk.grey("|")} ${formatISO(moment)}`,
+        );
+        stream.write("\n");
+        if (msgFormat === "full") {
+          // highlight first line in bold
+          const newlinePos = entry.msg.indexOf("\n");
+          if (newlinePos === -1) {
+            stream.write(chalk.bold(entry.msg) + "\n");
+          } else {
+            stream.write(chalk.bold(entry.msg.substring(0, newlinePos)));
+            stream.write(entry.msg.substring(newlinePos));
+            stream.write("\n");
+          }
+        } else if (msgFormat === "one-line") {
+          const newlinePos = entry.msg.indexOf("\n");
+          if (newlinePos === -1) {
+            stream.write(entry.msg);
+            stream.write("\n");
+          } else {
+            stream.write(entry.msg.substring(0, newlinePos));
+            stream.write("\n");
+          }
+        }
+      }
+      stream.write(sep);
+      stream.write("\n\n");
+      stream.write(`Stats:\n`);
+      stream.write(
+        JSON.stringify(
+          Object.fromEntries(
+            [...authors].sort((a, b) => (a[1] < b[1] ? 1 : -1)),
+          ),
+          null,
+          2,
         ),
-      )} ${chalk.grey("|")} ${
-        highlightedSet.has(entry.author)
-          ? chalk.yellow.bold(entry.author)
-          : chalk.yellow(entry.author)
-      } ${chalk.grey("|")} ${formatISO(moment)}`,
-    );
-    stream.write("\n");
-    if (msgFormat === "full") {
-      // highlight first line in bold
-      const newlinePos = entry.msg.indexOf("\n");
-      if (newlinePos === -1) {
-        stream.write(chalk.bold(entry.msg) + "\n");
-      } else {
-        stream.write(chalk.bold(entry.msg.substring(0, newlinePos)));
-        stream.write(entry.msg.substring(newlinePos));
-        stream.write("\n");
+      );
+      stream.write(`\n`);
+      if (stream !== process.stdout) {
+        stream.end();
       }
-    } else if (msgFormat === "one-line") {
-      const newlinePos = entry.msg.indexOf("\n");
-      if (newlinePos === -1) {
-        stream.write(entry.msg);
-        stream.write("\n");
-      } else {
-        stream.write(entry.msg.substring(0, newlinePos));
-        stream.write("\n");
-      }
-    }
-  }
-  stream.write(sep);
-  stream.write("\n\n");
-  stream.write(`Stats:\n`);
-  stream.write(
-    JSON.stringify(
-      Object.fromEntries([...authors].sort((a, b) => (a[1] < b[1] ? 1 : -1))),
-      null,
-      2,
-    ),
+    },
   );
-  stream.write(`\n`);
-  if (stream !== process.stdout) {
-    stream.end();
-  }
-}
 
 await program.parseAsync();
