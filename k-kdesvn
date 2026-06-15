@@ -78,7 +78,7 @@ async function checkoutLanguages(languages: string[]) {
     );
     process.exit(1);
   }
-  console.log(`Setting up language paths...`);
+  console.log(`Checking out language files...`);
   await $({
     verbose: true,
   })`svn update --quiet --set-depth infinity ${fastCartesian([
