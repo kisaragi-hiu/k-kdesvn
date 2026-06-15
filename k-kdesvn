@@ -76,6 +76,7 @@ async function checkoutLanguages(languages: string[]) {
   console.log(`Setting up language paths...`);
   await $({
     verbose: true,
+    cwd: process.cwd(),
   })`svn update --quiet --set-depth infinity ${fastCartesian([
     ["trunk", "branches/stable"],
     ["l10n-kf5", "l10n-kf6"],
@@ -166,6 +167,7 @@ function initLokalizeProject(lang?: string, reference?: string) {
   const trunkTarget = targetLang;
   const stableTarget = `stable.${targetLang}`;
 
+  mkdirSync(trunkTarget, { recursive: true });
   writeFileSync(
     path.join(trunkTarget, "index.lokalize"),
     `
@@ -184,6 +186,7 @@ TargetLangCode=${targetLang}
 Markup=(<[^>]+>)+|(&[A-Za-z_:][A-Za-z0-9_\\\\.:-]*;|%[0-9n])+
 `.trim(),
   );
+  mkdirSync(stableTarget, { recursive: true });
   writeFileSync(
     path.join(stableTarget, "index.lokalize"),
     `
@@ -330,6 +333,7 @@ program
     }
     process.chdir(path.resolve(path.join(dir, "kde-svn")));
     await checkoutLanguages([opts.lang]);
+    process.chdir(path.resolve(path.join(dir)));
     initLokalizeProject(opts.lang);
   });
 
