@@ -641,11 +641,11 @@ This automates that.`,
     if (newer.includes("latin")) {
       const older = "nan_TW/terms.tbx";
       console.log(`Copying ${newer} to ${older}...`);
-      await $`sed s/'xml:lang="nan-TW@latin"'/'xml:lang="nan-TW"'/ nan_TW@latin/terms.tbx > nan_TW/terms.tbx`;
+      await $`sed s/'xml:lang="nan-TW@latin"'/'xml:lang="nan-TW"'/ nan_TW@latin/terms.tbx > $(readlink -f nan_TW/terms.tbx)`;
     } else {
       const older = "nan_TW@latin/terms.tbx";
       console.log(`Copying ${newer} to ${older}...`);
-      await $`sed s/'xml:lang="nan-TW"'/'xml:lang="nan-TW@latin"'/ nan_TW/terms.tbx > nan_TW@latin/terms.tbx`;
+      await $`sed s/'xml:lang="nan-TW"'/'xml:lang="nan-TW@latin"'/ nan_TW/terms.tbx > $(readlink -f nan_TW@latin/terms.tbx)`;
     }
   });
 
