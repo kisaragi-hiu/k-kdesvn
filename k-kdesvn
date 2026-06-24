@@ -280,6 +280,7 @@ program
     }
     // kde-translations/kde-svn
     await setupSvnCheckout(path.join(dir, "kde-svn"), opts.readOnly, languages);
+    cd(dir);
     // kde-translations/l10n-templates
     const $$ = $({ verbose: true });
     await $$`git clone --depth 1 https://invent.kde.org/localization/l10n-templates`;
