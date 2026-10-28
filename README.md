@@ -1,66 +1,55 @@
 # k-kdesvn
 
-Commands for managing my checkout of the KDE Subversion repository.
+Commands for managing my local clone of the l10n-umbrella repository.
 
-I use Git locally to track local changes.
+This used to use a local Git repository to track local changes to the checkout of the SVN repository. I will rename this at some point.
 
 ## Requirements
 
 - Deno; required packages are then fetched automatically
-- the `svn` cli
 - Git
 - `k-kdesvn pocount` requires `fd`, `pocount`, and `grep`
-- `k-kdesvn check` requires `fd` and `msgfmt`
-- `k-kdesvn msg` requires `xsel` and being on X11
+- `k-kdesvn check` requires `fd`, `msgfmt`, and Pology
 
 # Features
 
 ## Log
 
-`k-kdesvn log` is like `svn log` except Scripty is excluded, so that I'm actually able to see changes from other translators, as well as changes made directly to the translation repository.
+`k-kdesvn log` is like `git log` except Scripty is excluded, so that I'm actually able to see changes from other translators, as well as changes made directly to the translation repository.
 
-By default this shows the output of `svn log` in the current folder, fetching info for the 100 most recent revisions but then filtering out revisions made by Scripty.
+No option is provided.
 
 ## Make a new checkout
 
 ```sh
-k-kdesvn clone new-dir --langs zh_TW,ja [--read-only]
+k-kdesvn init new-dir --langs zh_TW,ja [--read-only]
 ```
 
 Then if I want to check out another language:
 
 ```sh
-cd new-dir
-k-kdesvn checkout-language zh_CN
+k-kdesvn add-language --lang zh_CN new-dir
 ```
 
-I haven't automated setting up Lokalize yet.
+This tries to set up a Lokalize project as well.
+
+If the language has a `trunk6/lokalize-files/terms.tbx` file, that file will be symlinked. 
+
+TODO: also support putting it in `support`
 
 ## Day-to-day tools
 
 ```sh
 # equivalent to
 # fd -e po -x msgfmt -o /dev/null --check-format
+# plus pology kde checks
 # starts from the current folder
 k-kdesvn check
 ```
 
 ```sh
-# Pull new changes from svn with svn update
-# then update the local Git repository to contain the new files
-# equivalent to
-# svn update; git add .; git commit -m before
-# Assumes we're at the root of the checkout.
+# Update the repository and submodules to latest
 k-kdesvn update
-```
-
-```sh
-# Copy the latest Git commit message to clipboard..
-# I use Git to track local changes and describe changes in a Git commit, then
-# copy that commit message to SVN afterwards. This allows me to simply paste
-# it into the editor after running svn commit.
-# Frankly I do this in Magit more often instead of using this command.
-k-kdesvn msg
 ```
 
 ```sh
