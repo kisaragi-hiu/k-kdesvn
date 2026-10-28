@@ -127,11 +127,11 @@ function setupLanguageSymlinks(lang: string) {
       // this is what's written into the symlink, so it's relative to the
       // symlink itself
       path.join("..", "l10n-umbrella", teamcodeToDir(lang), `trunk${branch}`),
-      path.join(trunk, branch),
+      path.join(trunk, `kf${branch}`),
     );
     symlinkSync(
       path.join("..", "l10n-umbrella", teamcodeToDir(lang), `stable${branch}`),
-      path.join(stable, branch),
+      path.join(stable, `kf${branch}`),
     );
   }
 }
