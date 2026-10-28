@@ -291,9 +291,10 @@ program
       console.log(`Please specify the language with --lang`);
       process.exit(1);
     }
-    cd(path.resolve(path.join(dir, "l10n-umbrella")));
+    const absDir = path.resolve(dir);
+    cd(path.join(absDir, "l10n-umbrella"));
     await cloneLanguageSubmodules([opts.lang]);
-    cd(path.resolve(path.join(dir)));
+    cd(absDir);
     setupLanguageSymlinks(opts.lang);
     initLokalizeProject(opts.lang);
   });
