@@ -1,26 +1,23 @@
 #!/usr/bin/env -S deno run -A
 // -*- mode: typescript; -*-
-/** Commands for managing a local kdesvn repository checkout. */
+/** Commands for managing my local l10n-umbrella repository checkout. */
 // vim: ft=typescript
 
 import {
   mkdirSync,
   writeFileSync,
-  readFileSync,
+  readdirSync,
   existsSync,
+  statSync,
   symlinkSync,
 } from "node:fs";
-import { spawn } from "node:child_process";
 import * as process from "node:process";
 import path from "node:path";
 import { homedir } from "node:os";
 
-// Fancy name for "every combination" that Shell exposes in the {a,b}{c,d}
-// wildcard syntax.
-import fastCartesian from "npm:fast-cartesian@9.0.1";
 import { Chalk } from "npm:chalk@5.6.2";
 
-import { program, Option } from "npm:@commander-js/extra-typings@14.0.0";
+import { program } from "npm:@commander-js/extra-typings@14.0.0";
 
 const chalk = new Chalk({
   // Force colors on even if we're piping to another program
@@ -29,51 +26,43 @@ const chalk = new Chalk({
   level: 3,
 });
 
-import { link } from "npm:ansi-escapes@7.1.1";
-
-import {
-  parseCommaSeparated,
-  formatISO,
-  fetchLogEntries,
-  escapeFile,
-  ArgLogMsgFormat,
-  ArgLogSort,
-} from "./utils.ts";
 import { $, cd } from "npm:zx@8.8.5";
 
-program.description(`Commands for managing a local checkout of an svn repository with git.
+program.description(
+  `Commands for managing my local KDE translation repository checkouts.`,
+);
 
-The Git repository is only here locally, and is used for local diff checking.`);
-
-/** Return team codes and names from the teamnames file as a record. */
-function getTeamnames(): Record<string, string> {
-  const path = [
-    "trunk/l10n-kf6/teamnames",
-    "kde-svn/trunk/l10n-kf6/teamnames",
-  ].find((f) => existsSync(f));
-  if (!path) throw new Error("Unable to read teamnames file!");
-  const ret: Record<string, string> = {};
-  for (const line of readFileSync(path, {
-    encoding: "utf-8",
-  }).split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.length === 0 || trimmed.startsWith("#")) continue;
-    const [code, name] = trimmed.split("=") as [string, string];
-    ret[code] = name;
+/** Return team codes in the umbrella repository. */
+function getTeamcodes(): string[] {
+  const path = ".";
+  if (!existsSync(path)) {
+    throw new Error("Unable to read l10n-umbrella directory!");
+  }
+  if (!statSync(path).isDirectory()) {
+    throw new Error("l10n-umbrella is not a directory!");
+  }
+  const ret: string[] = [];
+  for (const dir of readdirSync(path)) {
+    if (!dir.startsWith("l10n-")) continue;
+    if (dir === "l10n-templates") continue;
+    ret.push(dir.replace("l10n-", "").replace("-", "@"));
   }
   return ret;
 }
 
+/** Return the dir name of `code` in the umbrella repository. */
+function teamcodeToDir(code: string): string {
+  return `l10n-${code.replace("@", "-")}`;
+}
+
 /**
- * Check out `languages` for the current repository.
- * Assumes current directory is the top level of the svn working copy.
+ * Clone submodules for `languages`, checking that they are all valid.
+ * This should be run within the umbrella repository.
  */
-async function checkoutLanguages(languages: string[]) {
-  // Valid team names. We read them here because they've only become
-  // available here.
-  const codesFromTeamnames = Object.keys(getTeamnames());
+async function cloneLanguageSubmodules(languages: string[]) {
+  const validLanguages = getTeamcodes();
   const invalidLanguages = [
-    ...new Set(languages).difference(new Set(codesFromTeamnames)),
+    ...new Set(languages).difference(new Set(validLanguages)),
   ];
   if (invalidLanguages.length > 0) {
     console.log(
@@ -83,74 +72,38 @@ async function checkoutLanguages(languages: string[]) {
     );
     process.exit(1);
   }
-  console.log(`Checking out language files...`);
+  console.log(`Cloning language files...`);
   await $({
     verbose: true,
-  })`svn update --quiet --set-depth infinity ${fastCartesian([
-    ["trunk", "branches/stable"],
-    ["l10n-kf5", "l10n-kf6"],
-    languages,
-  ])
-    .map((a) => a.join("/"))
-    .map((f) => escapeFile(f))}`;
+  })`git submodule update --init --depth 1 ${languages.map(teamcodeToDir)}`;
 }
 
 /**
- * Checkout the KDE SVN repository to `dir` then set it up.
- * `readonly`: whether to clone from the readonly repo or not
+ * Clone the umbrella repository to `dir` then set it up.
+ * `readonly`: whether to clone readonly or not
  * `languages`: set the repository up for these languages
+ * This should be run in the workspace directory.
  * NOTE: This will manipulate cwd and cannot actually be run in parallel.
  */
-async function setupSvnCheckout(
+async function setupUmbrella(
   dir: string,
   readonly: boolean | undefined,
   languages: string[],
 ) {
   const pwdBefore = process.cwd();
   const repoUrl = readonly
-    ? "svn://anonsvn.kde.org/home/kde/"
-    : "svn+ssh://svn@svn.kde.org/home/kde/";
+    ? "https://invent.kde.org/localization/l10n-umbrella.git"
+    : "git@invent.kde.org:localization/l10n-umbrella.git";
   console.log(
     readonly
-      ? `Checking out the read-only KDE subversion repository into ${dir}...`
-      : `Checking out the read-write KDE subversion repository into ${dir}...`,
+      ? `Cloning the read-only KDE l10n-umbrella repository into ${dir}...`
+      : `Cloning the read-write KDE l10n-umbrella repository into ${dir}...`,
   );
   const $$ = $({ verbose: true });
-  await $$`svn checkout --depth=empty ${repoUrl} ${escapeFile(dir)}`;
+  await $$`git clone --depth=1 ${repoUrl} ${dir}`;
   cd(dir);
-  // The goal:
-  //   svn update --set-depth infinity branches/stable/l10n-kf{5,6}/{...}
-  //   svn update --set-depth infinity trunk/l10n-kf{5,6}/{...}
-  // but each parent directory needs to be a working copy, ie. checked out.
-  // To checkout each parent directory, there are only 3 options:
-  // - Set depth to infinity, which is too much
-  // - Set depth to immediates, which includes irrelevant folders and files
-  // - Set depth to files, which has irrelevant files but is the least bad
-  // So this is setting the directory.
-  console.log(`Setting up parent paths...`);
-  await $$`svn update --set-depth files trunk`;
-  await $$`svn update --set-depth files branches`;
-  await $$`svn update --set-depth files branches/stable`;
-  await $$`svn update --set-depth files ${
-    // Doing the product in JS makes it easy to pass in variables
-    fastCartesian([
-      ["trunk", "branches/stable"],
-      ["l10n-kf5", "l10n-kf6"],
-    ])
-      .map((a) => a.join("/"))
-      .map((f) => escapeFile(f))
-  }`;
-
-  await checkoutLanguages(languages);
-
-  console.log(`Setting up the local Git repository...`);
-  await $$`git init`;
-  console.log(`Excluding .svn from Git...`);
-  mkdirSync(path.join(".git", "info"), { recursive: true });
-  writeFileSync(path.join(".git", "info", "exclude"), `.svn/`);
-  console.log(`Creating initial Git commit...`);
-  await $$`git add .`;
-  await $$`git commit -m before`;
+  await $$`git submodule update --init --depth 1 l10n-templates`;
+  await cloneLanguageSubmodules(languages);
   cd(pwdBefore);
 }
 
@@ -169,16 +122,15 @@ function setupLanguageSymlinks(lang: string) {
   // we don't want to see trunk and stable at once. Trunk and stable should
   // instead be managed by opening one of them at a time, then using
   // alternative translations to automatically synchronize them over.
-  for (const branch of ["kf5", "kf6"]) {
+  for (const branch of ["5", "6"]) {
     symlinkSync(
       // this is what's written into the symlink, so it's relative to the
       // symlink itself
-      path.join("..", "kde-svn", "trunk", `l10n-${branch}`, lang),
+      path.join("..", "l10n-umbrella", teamcodeToDir(lang), `trunk${branch}`),
       path.join(trunk, branch),
     );
     symlinkSync(
-      // prettier-ignore
-      path.join("..", "kde-svn", "branches", "stable", `l10n-${branch}`, lang),
+      path.join("..", "l10n-umbrella", teamcodeToDir(lang), `stable${branch}`),
       path.join(stable, branch),
     );
   }
@@ -206,7 +158,9 @@ function initLokalizeProject(lang?: string, reference?: string) {
       ? "zh-l10n@lists.slat.org"
       : promptLoop(`Mailing list for ${targetLang}:`);
   const languageName =
-    targetLang === "zh_TW" ? "Traditional Chinese" : getTeamnames()[targetLang];
+    targetLang === "zh_TW"
+      ? "Traditional Chinese"
+      : promptLoop(`Language name for ${targetLang}:`);
 
   const trunkAlt = referenceLang;
   const stableAlt = `stable.${referenceLang}`;
@@ -265,7 +219,7 @@ program
     "--langs <languages>",
     "Which languages to clone, as language codes. Comma-separated.",
   )
-  .option("--read-only", "the --limit argument of svn log")
+  .option("--read-only", "whether to clone a read-only repository")
   .action(async (dir: string, opts: { langs?: string; readOnly?: boolean }) => {
     const languages = opts?.langs
       ? opts.langs.split(",").map((x) => x.trim())
@@ -278,12 +232,13 @@ program
       console.log(`${dir} already exists.`);
       process.exit(1);
     }
-    // kde-translations/kde-svn
-    await setupSvnCheckout(path.join(dir, "kde-svn"), opts.readOnly, languages);
+    // kde-translations/l10n-umbrella, including templates
+    await setupUmbrella(
+      path.join(dir, "l10n-umbrella"),
+      opts.readOnly,
+      languages,
+    );
     cd(dir);
-    // kde-translations/l10n-templates
-    const $$ = $({ verbose: true });
-    await $$`git clone --depth 1 https://invent.kde.org/localization/l10n-templates`;
 
     console.log("Creating Lokalize project structure...");
     for (const lang of languages) {
@@ -318,34 +273,11 @@ program
     console.log(`Checkout done.
 The Lokalize project can be seen in ${dir}/<language>/index.lokalize.
 The filled-in metadata most likely needs updating.
-Use ${chalk.yellow("k-kdesvn update")} at ${dir} to do an svn update followed by adding the new changes into one local git commit, as well as updating the templates repository.`);
+Use ${chalk.yellow("k-kdesvn update")} at ${dir} to pull template and translations.`);
   });
 
 program
-  .command("no-docmessages")
-  .description("Change the current workspace to not include docmessages")
-  .action(async () => {
-    const abs = process.cwd();
-    const $$ = $({ verbose: true });
-    cd("kde-svn");
-    await $$`fd docmessages -j 1 -x svn update --set-depth empty`;
-    await $$`git add .`;
-    await $$`git commit -m "don't keep track of docmessages"`;
-    cd(abs);
-    cd("l10n-templates");
-    await $$`
-      git sparse-checkout set ${[
-        "stable5",
-        "stable6",
-        "summit",
-        "trunk5",
-        "trunk6",
-      ].map((p) => path.join(p, "messages"))}
-    `;
-  });
-
-program
-  .command("checkout-language")
+  .command("add-language")
   .description("Add a language to the workspace")
   .argument(
     "[dir]",
@@ -359,8 +291,8 @@ program
       console.log(`Please specify the language with --lang`);
       process.exit(1);
     }
-    cd(path.resolve(path.join(dir, "kde-svn")));
-    await checkoutLanguages([opts.lang]);
+    cd(path.resolve(path.join(dir, "l10n-umbrella")));
+    await cloneLanguageSubmodules([opts.lang]);
     cd(path.resolve(path.join(dir)));
     setupLanguageSymlinks(opts.lang);
     initLokalizeProject(opts.lang);
@@ -379,10 +311,7 @@ program
   .command("update")
   .description(
     `Pull new changes from upstream to the workspace.
-This updates both the svn repository and the templates Git repository.
-
-Run this in the top level of the workspace itself, ie. the directory that includes ./kde-svn and ./l10n-templates.
-`,
+This updates the umbrella repository as well as submodules.`,
   )
   .argument(
     "[dir]",
@@ -393,31 +322,10 @@ Run this in the top level of the workspace itself, ie. the directory that includ
     const $$ = $({ verbose: true });
     try {
       const abs = path.resolve(dir);
-      await $$`cd ${path.join(abs, "kde-svn")} && svn update && git add . && git commit -m before`;
-      await $$`cd ${path.join(abs, "l10n-templates")} && git pull`;
+      await $$`cd ${path.join(abs, "l10n-umbrella")} && git pull --recurse-submodules --rebase`;
     } catch (_e) {
       // do nothing, the commands already explain what went wrong
     }
-  });
-
-program
-  .command("msg")
-  .summary("Copy latest Git commit message into the clipboard.")
-  .description(
-    `Copy latest Git commit message into the clipboard.
-Assumes xsel is installed and working.
-`,
-  )
-  .action(async () => {
-    const message = (
-      await $({ quiet: true })`git show --format=%B --no-patch HEAD`
-    ).stdout.trim();
-    console.log("Message:");
-    console.log(message);
-    await $({
-      input: message + "\n",
-    })`xsel --clipboard`;
-    console.log("Copied!");
   });
 
 program
@@ -432,170 +340,14 @@ program
 
 program
   .command("log")
-  .summary("Like `svn log` but exclude revisions from scripty.")
-  .description(
-    `Like \`svn log\` but exclude revisions from scripty.
-
-Example:
-  Fetch the last 100 revisions then exclude scripty changes:
-    k-gitsvn log -l 100
-  Fetch revisions since 2025-01-01 then exclude scripty changes:
-    k-gitsvn log --since "2025-01-01"
-  Fetch the last 100 revisions excluding authors "a" and "b":
-    k-gitsvn log --exclude "a,b" # scripty is included in this case`,
-  )
+  .summary("Like `git log` but exclude commits from scripty.")
   .argument("[path]", "Print log for PATH, defaults to the current directory")
-  .option("-l, --limit <n>", "the --limit argument of svn log")
-  .option("--since <date>", "Provide log from <date> to HEAD.")
-  .option(
-    "--exclude <authors...>",
-    'Exclude a different set of authors. Defaults to ["scripty"].',
-  )
-  .option(
-    "--only <authors...>",
-    "Show only revisions from these authors. Has higher priority than --exclude.",
-  )
-  .option("--highlight <authors...>", "Highlight these authors.")
-  .addOption(
-    new Option(
-      `--msg-format <${ArgLogMsgFormat.options.join("|")}>`,
-      "How to show messages. Defaults to full messages.",
-    )
-      .choices(ArgLogMsgFormat.options)
-      .default("full"),
-  )
-  .addOption(
-    new Option(
-      `--sort <${ArgLogSort.options}>`,
-      "How to sort messages. Defaults to new to old.",
-    )
-      .default("new-first")
-      .choices(ArgLogSort.options),
-  )
-  .action(
-    async (
-      path?: string,
-      opts?: {
-        /** --limit as passed to svn log. Defaults to 100 if --since is not
-         * provided, undefined if it is. */
-        limit?: string;
-        /** List changes from this date to HEAD. */
-        since?: string;
-        /** Exclude these authors. Comma-separated but can also be an array. Defaults to "scripty". */
-        exclude?: string[];
-        /** Show only these authors. Higher priority than exclude. Comma-separated but can also be an array. Defaults to "scripty". */
-        only?: string[];
-        /** Highlight these authors. Comma-separated but can also be an array. Defaults to highlighting no one. */
-        highlight?: string[];
-        /** How to sort log entries. Undefined means return whatever svn log returns. */
-        sort?: string;
-        /** How to show commit messages. */
-        msgFormat?: string;
-      },
-    ) => {
-      const stream = process.stdout.isTTY
-        ? spawn("/usr/bin/less", ["-R"], {
-            stdio: ["pipe", "inherit", "inherit"],
-          }).stdin
-        : process.stdout;
-      const revision = opts?.since && `{${opts.since}}:HEAD`;
-      // When --since is provided, --limit should act like no limit by default
-      // but when --since is not provided, --limit should have a default of 100
-      const limit = opts?.limit ?? (revision ? undefined : "100");
-      // Specify defaults in one place.
-      const sort = ArgLogSort.parse(opts?.sort ?? "new-first");
-      const msgFormat = ArgLogMsgFormat.parse(opts?.msgFormat ?? "full");
-      const sep = chalk.grey("-".repeat(72));
-      const excludeSet = new Set(
-        parseCommaSeparated(opts?.exclude, ["scripty"]),
-      );
-      const onlySet = new Set(parseCommaSeparated(opts?.only, []));
-      const highlightedSet = new Set(parseCommaSeparated(opts?.highlight, []));
-      const authors = new Map<string, number>();
-
-      stream.write(
-        `--limit: ${limit ?? "unspecified"}
---revision: ${revision ?? "unspecified"}
-Sort: ${sort ?? "unspecified"}
-Excluded authors: ${[...excludeSet].join(", ")}
-"Only" authors: ${[...onlySet].join(", ")}
-Highlighted authors: ${[...highlightedSet].join(", ")}
-` + "\n",
-      );
-
-      console.error("Fetching log messages from remote...");
-      const logentries = await fetchLogEntries({
-        limit,
-        revision,
-        sort,
-        path,
-      });
-
-      for (const entry of logentries) {
-        authors.set(entry.author, (authors.get(entry.author) || 0) + 1);
-        // When --only is specified, exclude everyone not on that list
-        if (onlySet.size !== 0 && !onlySet.has(entry.author)) continue;
-        // excluded and not in the only list -> skip the entry
-        // excluded but in the only list -> keep the entry
-        // because we want --only to have higher priority
-        if (excludeSet.has(entry.author) && !onlySet.has(entry.author))
-          continue;
-        const moment = entry.date;
-        stream.write(sep);
-        stream.write("\n");
-        const revision = entry["@_revision"];
-        stream.write(
-          `r${chalk.blue(
-            link(
-              revision,
-              `https://websvn.kde.org/?view=revision&revision=${revision}`,
-            ),
-          )} ${chalk.grey("|")} ${
-            highlightedSet.has(entry.author)
-              ? chalk.yellow.bold(entry.author)
-              : chalk.yellow(entry.author)
-          } ${chalk.grey("|")} ${formatISO(moment)}`,
-        );
-        stream.write("\n");
-        if (msgFormat === "full") {
-          // highlight first line in bold
-          const newlinePos = entry.msg.indexOf("\n");
-          if (newlinePos === -1) {
-            stream.write(chalk.bold(entry.msg) + "\n");
-          } else {
-            stream.write(chalk.bold(entry.msg.substring(0, newlinePos)));
-            stream.write(entry.msg.substring(newlinePos));
-            stream.write("\n");
-          }
-        } else if (msgFormat === "one-line") {
-          const newlinePos = entry.msg.indexOf("\n");
-          if (newlinePos === -1) {
-            stream.write(entry.msg);
-            stream.write("\n");
-          } else {
-            stream.write(entry.msg.substring(0, newlinePos));
-            stream.write("\n");
-          }
-        }
-      }
-      stream.write(sep);
-      stream.write("\n\n");
-      stream.write(`Stats:\n`);
-      stream.write(
-        JSON.stringify(
-          Object.fromEntries(
-            [...authors].sort((a, b) => (a[1] < b[1] ? 1 : -1)),
-          ),
-          null,
-          2,
-        ),
-      );
-      stream.write(`\n`);
-      if (stream !== process.stdout) {
-        stream.end();
-      }
-    },
-  );
+  .action(async (path?: string) => {
+    // https://stackoverflow.com/questions/6889830/equivalence-of-git-log-exclude-author
+    await $({
+      stdio: ["pipe", "inherit", "inherit"],
+    })`git log --perl-regexp --author='^(.*(?<!<scripty@kde\\.org>))$' -- ${path}`;
+  });
 
 const nan_TW_sub = program
   .command("nan-tw")
@@ -618,7 +370,6 @@ nan_TW should be all-singular, but currently nan_TW files are initiated to
     })`find -L nan_TW nan_TW@latin -path '*.po' -execdir sed -i 's/"Plural-Forms: nplurals=2; plural=n != 1;\\\\n"/"Plural-Forms: nplurals=1; plural=0;\\\\n"/' '{}' ';'`;
   });
 
-// TODO: maybe we should put the glossaries in SVN
 nan_TW_sub
   .command("sync-glossaries")
   .summary("Synchronize nan_TW and nan_TW@latin glossaries")
