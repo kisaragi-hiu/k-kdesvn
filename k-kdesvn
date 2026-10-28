@@ -134,6 +134,11 @@ function setupLanguageSymlinks(lang: string) {
       path.join(stable, `kf${branch}`),
     );
   }
+  const termsInKf6 = path.join("kf6", "lokalize-files", "terms.tbx");
+  if (existsSync(path.join(trunk, termsInKf6))) {
+    symlinkSync(path.join("..", termsInKf6), path.join(trunk, "terms.tbx"));
+    symlinkSync(path.join("..", termsInKf6), path.join(stable, "terms.tbx"));
+  }
 }
 
 /**
